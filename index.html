@@ -286,6 +286,33 @@ button { cursor: pointer; }
 .ptag-s { background: var(--shopify-bg); color: var(--shopify-tx); border-color: var(--shopify-bd); }
 .ptag-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
+/* Platform toggle row */
+.plat-toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.plat-toggle-row:last-child { border-bottom: none; }
+.plat-toggle-info { display: flex; align-items: center; gap: 10px; }
+.plat-toggle-icon { font-size: 16px; }
+.plat-toggle-name { font-size: 13px; font-weight: 500; color: var(--txt); }
+.plat-toggle-sub  { font-size: 11px; color: var(--txt3); margin-top: 1px; }
+.toggle-switch {
+  position: relative; width: 36px; height: 20px; flex-shrink: 0;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track {
+  position: absolute; inset: 0; border-radius: 20px; cursor: pointer;
+  background: var(--border2); transition: background .2s;
+}
+.toggle-track::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #fff; transition: transform .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.toggle-switch input:checked + .toggle-track { background: var(--green); }
+.toggle-switch input:checked + .toggle-track::after { transform: translateX(16px); }
+
 /* Completeness bar */
 .comp-wrap { display: flex; align-items: center; gap: 8px; }
 .comp-track { width: 64px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
@@ -1679,27 +1706,73 @@ function renderPanelTab(p) {
       ${aField('Image URL',p.imageUrl)}
     </div>`;
 
-  if(detailTab==='sync') return `
-    <div class="rp-section"><div class="rp-section-title">Sync Status</div>
-      ${['odoo','zoho','shopify'].map(pl=>{
-        const synced = pl==='odoo'?p.syncOdoo:pl==='zoho'?p.syncZoho:p.syncShopify;
-        const pid    = pl==='odoo'?p.odooId:pl==='zoho'?p.zohoItemId:p.shopifyId;
-        const cls    = synced?'tag-green':'tag-gray';
-        return `<div class="att-field">
-          <div class="att-field-label" style="text-transform:capitalize">${pl}</div>
-          <div class="att-field-val"><span class="tag ${cls}">${synced?'Synced':'Not synced'}</span>${pid?` <span style="font-size:11px;color:var(--txt3)">${pid}</span>`:''}</div>
-        </div>`;
-      }).join('')}
+  if(detailTab==='sync') {
+    const platforms = [
+      {id:'odoo',    label:'Odoo',    icon:'🟣', sub:'Inventory · XML-RPC',  checked:p.syncOdoo,    pidKey:'odooId',     pidVal:p.odooId},
+      {id:'zoho',    label:'Zoho',    icon:'🔴', sub:'Inventory · REST API', checked:p.syncZoho,    pidKey:'zohoItemId', pidVal:p.zohoItemId},
+      {id:'shopify', label:'Shopify', icon:'🟢', sub:'Admin REST · 2024-04', checked:p.syncShopify, pidKey:'shopifyId',  pidVal:p.shopifyId},
+    ];
+    return `
+    <div class="rp-section">
+      <div class="rp-section-title">Platform Sync</div>
+      ${platforms.map(pl=>`
+      <div class="plat-toggle-row">
+        <div class="plat-toggle-info">
+          <span class="plat-toggle-icon">${pl.icon}</span>
+          <div>
+            <div class="plat-toggle-name">${pl.label}</div>
+            <div class="plat-toggle-sub">${pl.pidVal ? pl.pidVal : pl.sub}</div>
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" ${pl.checked?'checked':''} onchange="toggleSync(${p.id},'${pl.id}',this.checked)">
+          <span class="toggle-track"></span>
+        </label>
+      </div>`).join('')}
     </div>
-    <div class="rp-section"><div class="rp-section-title">Field Mapping Preview</div>
-      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:11px;line-height:2;font-family:ui-monospace,monospace;color:var(--txt2)">
-        <span style="color:var(--blue)">name</span>: "${p.name.slice(0,30)}…" → odoo.name · zoho.name · shopify.title<br>
-        <span style="color:var(--blue)">sku</span>: "${p.sku}" → odoo.default_code · zoho.sku · shopify.variant.sku<br>
-        <span style="color:var(--blue)">list_price</span>: ${p.salesPrice} → odoo.list_price · zoho.rate · shopify.price<br>
-        <span style="color:var(--txt4)">…+49 more fields</span>
-      </div>
-    </div>`;
+    <div class="rp-section">
+      <div class="rp-section-title">Platform IDs</div>
+      ${[
+        {label:'Odoo ID',          key:'odooId',     val:p.odooId},
+        {label:'Zoho Item ID',     key:'zohoItemId', val:p.zohoItemId},
+        {label:'Shopify Product ID',key:'shopifyId', val:p.shopifyId},
+      ].map(f=>`
+      <div class="att-field">
+        <div class="att-field-label">${f.label}</div>
+        <div class="att-field-val">
+          <input style="background:none;border:none;border-bottom:1px solid var(--border);padding:2px 4px;font-size:12px;color:var(--txt);width:100%;outline:none;font-family:ui-monospace,monospace"
+            value="${f.val||''}" placeholder="—"
+            onchange="updateProductField(${p.id},'${f.key}',this.value)"
+            onfocus="this.style.borderColor='var(--accent)'"
+            onblur="this.style.borderColor='var(--border)'">
+        </div>
+      </div>`).join('')}
+    </div>`;}
+
   return '';
+}
+
+function toggleSync(id, plat, val) {
+  const p = PRODUCTS.find(x => x.id === id);
+  if (!p) return;
+  if (plat === 'odoo')    p.syncOdoo    = val;
+  if (plat === 'zoho')    p.syncZoho    = val;
+  if (plat === 'shopify') p.syncShopify = val;
+  schedulePersist();
+  renderTable();
+  // re-render platforms row in header
+  const rpp = document.querySelector('.rp-platforms');
+  if (rpp) rpp.innerHTML =
+    (p.syncOdoo    ? '<span class="ptag ptag-o"><span class="ptag-dot"></span>Odoo</span>'    : '') +
+    (p.syncZoho    ? '<span class="ptag ptag-z"><span class="ptag-dot"></span>Zoho</span>'    : '') +
+    (p.syncShopify ? '<span class="ptag ptag-s"><span class="ptag-dot"></span>Shopify</span>' : '');
+}
+
+function updateProductField(id, key, val) {
+  const p = PRODUCTS.find(x => x.id === id);
+  if (!p) return;
+  p[key] = val;
+  schedulePersist();
 }
 
 function pushOne(plat) {
