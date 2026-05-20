@@ -1432,6 +1432,28 @@ const SCHEMA = [
     {pim:'Zoho Item ID',type:'Text',req:false,odoo:'N/A',zoho:'item_id',shopify:'N/A'},
     {pim:'Shopify Product ID',type:'Text',req:false,odoo:'N/A',zoho:'N/A',shopify:'id'},
   ]},
+  {group:'Extended / Notion',fields:[
+    {pim:'Manufacturer',type:'Text',req:false,odoo:'manufacturer',zoho:'manufacturer',shopify:'metafield'},
+    {pim:'Adhesive Type',type:'Select',req:false,odoo:'N/A',zoho:'N/A',shopify:'metafield'},
+    {pim:'Size',type:'Select',req:false,odoo:'N/A',zoho:'N/A',shopify:'variant option'},
+    {pim:'Height (in)',type:'Number',req:false,odoo:'N/A',zoho:'N/A',shopify:'N/A'},
+    {pim:'Dimension Unit',type:'Text',req:false,odoo:'N/A',zoho:'N/A',shopify:'N/A'},
+    {pim:'Sales Description',type:'Text',req:false,odoo:'description_sale',zoho:'description',shopify:'N/A'},
+    {pim:'Purchase Description',type:'Text',req:false,odoo:'description_purchase',zoho:'purchase_description',shopify:'N/A'},
+    {pim:'Inventory Method',type:'Text',req:false,odoo:'N/A',zoho:'N/A',shopify:'N/A'},
+    {pim:'Unit Group',type:'Select',req:false,odoo:'N/A',zoho:'unit_group',shopify:'N/A'},
+    {pim:'Packings',type:'Text',req:false,odoo:'N/A',zoho:'package_details',shopify:'N/A'},
+    {pim:'Default Sales Unit',type:'Select',req:false,odoo:'N/A',zoho:'N/A',shopify:'N/A'},
+    {pim:'Is Returnable',type:'Select',req:false,odoo:'N/A',zoho:'is_returnable_item',shopify:'N/A'},
+    {pim:'Selling Price (Z)',type:'Currency',req:false,odoo:'N/A',zoho:'rate',shopify:'N/A'},
+    {pim:'Purchase Price (Z)',type:'Currency',req:false,odoo:'N/A',zoho:'purchase_rate',shopify:'N/A'},
+    {pim:'Location Name',type:'Text',req:false,odoo:'N/A',zoho:'location_name',shopify:'N/A'},
+    {pim:'Warehouse Name',type:'Text',req:false,odoo:'N/A',zoho:'warehouse_name',shopify:'N/A'},
+    {pim:'Package Height',type:'Text',req:false,odoo:'N/A',zoho:'package_height',shopify:'N/A'},
+    {pim:'Package Length',type:'Number',req:false,odoo:'N/A',zoho:'package_length',shopify:'N/A'},
+    {pim:'Package Width',type:'Number',req:false,odoo:'N/A',zoho:'package_width',shopify:'N/A'},
+    {pim:'Package Weight',type:'Number',req:false,odoo:'N/A',zoho:'package_weight',shopify:'N/A'},
+  ]},
 ];
 
 // ════════════════════════════════════════════════
@@ -1679,15 +1701,23 @@ function renderPanelTab(p) {
       ${aField('Category',p.category)}
       ${aField('Product Type',p.productType)}
       ${aField('Brand',p.brand)}
+      ${aField('Manufacturer',p.manufacturer)}
       ${aField('Supplier',p.supplier)}
+      ${aField('Unit Group',p.unitGroup)}
       ${aField('UoM',p.uom)}
+      ${aField('Default Sales Unit',p.defaultSalesUnit)}
+      ${aField('Packings',p.packings)}
       ${aField('MOQ',p.moq)}
       ${aField('Lead Time',p.leadTime)}
+      ${aField('Is Returnable',p.isReturnable)}
       ${aField('Tags',Array.isArray(p.tags)?p.tags.join(', '):p.tags)}
     </div>
     <div class="rp-section"><div class="rp-section-title">Inventory</div>
       ${aField('Stock Qty',p.stockQty)}
       ${aField('Reorder Point',p.reorderPoint)}
+      ${aField('Inventory Method',p.inventoryMethod)}
+      ${aField('Location',p.locationName)}
+      ${aField('Warehouse',p.warehouseName)}
     </div>`;
 
   if(detailTab==='price') {
@@ -1698,6 +1728,8 @@ function renderPanelTab(p) {
       ${aField('Sales Price','$'+p.salesPrice.toFixed(2))}
       ${aField('Cost Price','$'+p.costPrice.toFixed(2))}
       ${aField('Compare At','$'+(p.comparePrice||0).toFixed(2))}
+      ${aField('Selling Price (Zoho)',p.sellingPriceZ?'$'+p.sellingPriceZ.toFixed(3):'')}
+      ${aField('Purchase Price (Zoho)',p.purchasePriceZ?'$'+p.purchasePriceZ.toFixed(2):'')}
       ${aField('Tax Rate',p.taxRate)}
       ${aField('Currency','USD')}
     </div>
@@ -1714,23 +1746,35 @@ function renderPanelTab(p) {
 
   if(detailTab==='physical') return `
     <div class="rp-section"><div class="rp-section-title">Dimensions</div>
+      ${aField('Size',p.size)}
       ${aField('Width',p.width)}
       ${aField('Length',p.length)}
+      ${aField('Height (in)',p.heightIn)}
       ${aField('Thickness',p.thickness)}
-      ${aField('Weight',p.weight+' '+p.weightUnit)}
+      ${aField('Weight (lbs)',p.weight+(p.weightUnit?' '+p.weightUnit:''))}
       ${aField('GSM',p.gsm)}
+      ${aField('Dimension Unit',p.dimensionUnit)}
     </div>
     <div class="rp-section"><div class="rp-section-title">Material</div>
       ${aField('Substrate',p.substrate)}
       ${aField('Finish',p.finish)}
+      ${aField('Adhesive Type',p.adhesiveType)}
       ${aField('Printable Sides',p.printableSides)}
       ${aField('Compatibility',p.compatibility)}
       ${aField('Waterproof',p.waterproof)}
     </div>
     <div class="rp-section"><div class="rp-section-title">Content & SEO</div>
+      ${aField('Sales Description',p.salesDesc)}
+      ${aField('Purchase Description',p.purchaseDesc)}
       ${aField('SEO Title',p.seoTitle)}
       ${aField('SEO Desc',p.seoDesc)}
       ${aField('Image URL',p.imageUrl)}
+    </div>
+    <div class="rp-section"><div class="rp-section-title">Packaging</div>
+      ${aField('Package Height',p.pkgHeight)}
+      ${aField('Package Length',p.pkgLength||'')}
+      ${aField('Package Width',p.pkgWidth||'')}
+      ${aField('Package Weight (Z)',p.pkgWeight||'')}
     </div>`;
 
   if(detailTab==='channels') {
@@ -2231,9 +2275,19 @@ function doImport() {
     'Odoo ID':'odooId','Zoho Item ID':'zohoItemId','Shopify Product ID':'shopifyId',
     'Tags':'tags','Variant Values':'variantValues',
     'Origin of Goods':'originOfGoods','HS Code':'hsCode',
+    'Manufacturer':'manufacturer','Adhesive Type':'adhesiveType',
+    'Size':'size','Height (in)':'heightIn','Dimension Unit':'dimensionUnit',
+    'Sales Description':'salesDesc','Purchase Description':'purchaseDesc',
+    'Inventory Method':'inventoryMethod','Unit Group':'unitGroup',
+    'Packings':'packings','Default Sales Unit':'defaultSalesUnit',
+    'Is Returnable':'isReturnable',
+    'Selling Price (Z)':'sellingPriceZ','Purchase Price (Z)':'purchasePriceZ',
+    'Location Name':'locationName','Warehouse Name':'warehouseName',
+    'Package Height':'pkgHeight','Package Length':'pkgLength',
+    'Package Width':'pkgWidth','Package Weight':'pkgWeight',
   };
   const newPs = csvRows.map((row,ri)=>{
-    const base={id:Date.now()+ri,emoji:'📦',status:'draft',completeness:55,missing:[],syncOdoo:false,syncZoho:false,syncShopify:false,channels:[],pdfUrl:'',techDataUrl:'',image2Url:'',image3Url:'',salesPrice:0,costPrice:0,stockQty:0,reorderPoint:0,tags:[]};
+    const base={id:Date.now()+ri,emoji:'📦',status:'draft',completeness:55,missing:[],syncOdoo:false,syncZoho:false,syncShopify:false,channels:[],pdfUrl:'',techDataUrl:'',image2Url:'',image3Url:'',salesPrice:0,costPrice:0,stockQty:0,reorderPoint:0,tags:[],manufacturer:'',adhesiveType:'',size:'',heightIn:'',dimensionUnit:'',salesDesc:'',purchaseDesc:'',inventoryMethod:'',unitGroup:'',packings:'',defaultSalesUnit:'',isReturnable:'',sellingPriceZ:0,purchasePriceZ:0,locationName:'',warehouseName:'',pkgHeight:'',pkgLength:0,pkgWidth:0,pkgWeight:0,preferredVendor:'',notionImages:''};
     csvHeaders.forEach((h,i)=>{
       const pf=csvMappings[h];
       if(pf&&pf!=='— Ignore —'){const k=keyMap[pf]||pf.toLowerCase().replace(/ /g,'');base[k]=row[i]||'';}
@@ -2342,7 +2396,29 @@ function notionAutoMap(h) {
     inkcompatibility:'Ink Compatibility',
     sku_zoho_:'Zoho Item ID', skuzoho:'Zoho Item ID',
     userdefined_id:'— Ignore —', 'userdefined:id':'— Ignore —',
-    size:'— Ignore —',
+    size:'Size',
+    manufacturer_z_:'Manufacturer', manufacturerz:'Manufacturer',
+    adhesivetype:'Adhesive Type',
+    heightin_:'Height (in)', heightin:'Height (in)',
+    weight_lbs_:'Weight', weightlbs:'Weight',
+    dimensionunit:'Dimension Unit',
+    salesdescription:'Sales Description', salesdesc:'Sales Description',
+    purchasedescription_z_:'Purchase Description', purchasedescriptionz:'Purchase Description',
+    inventoryvaluationmethod:'Inventory Method',
+    unitgroup_z_:'Unit Group', unitgroupz:'Unit Group',
+    packings:'Packings',
+    defaultsalesunit:'Default Sales Unit',
+    isreturnableitem_z_:'Is Returnable', isreturnableitemz:'Is Returnable',
+    sellingprice_z_:'Selling Price (Z)', sellingpricez:'Selling Price (Z)',
+    purchaseprice_z_:'Purchase Price (Z)', purchasepricez:'Purchase Price (Z)',
+    reorderlevel_z_:'Reorder Point', reorderlevelz:'Reorder Point',
+    locationname:'Location Name',
+    warehousename_z_:'Warehouse Name', warehousenamez:'Warehouse Name',
+    packageheight:'Package Height',
+    packagelength:'Package Length',
+    packagewidth:'Package Width',
+    packageweight_z_:'Package Weight', packageweightz:'Package Weight',
+    images:'Image URL',
   };
   return map[hl] || null;
 }
@@ -2489,6 +2565,31 @@ function mapNotionPageToProduct(page, index) {
     syncOdoo: false, syncZoho: false, syncShopify: false,
     channels: [],
     pdfUrl: '', techDataUrl: '', image2Url: '', image3Url: '',
+    // Extended Notion fields
+    manufacturer:    get('Manufacturer (Z)'),
+    adhesiveType:    get('Adhesive Type'),
+    size:            get('Size'),
+    heightIn:        get('Height (in)') ? get('Height (in)') + '"' : '',
+    weight:          get('Weight (lbs)') || get('Weight (lbs)') || '',
+    dimensionUnit:   get('Dimension Unit'),
+    salesDesc:       get('Sales Description'),
+    purchaseDesc:    get('Purchase Description (Z)'),
+    inventoryMethod: get('Inventory Valuation Method'),
+    unitGroup:       get('Unit Group (Z)'),
+    packings:        get('Packings'),
+    defaultSalesUnit:get('Default Sales Unit'),
+    isReturnable:    get('Is Returnable Item (Z)'),
+    sellingPriceZ:   parseFloat(get('Selling Price (Z)')) || 0,
+    purchasePriceZ:  parseFloat(get('Purchase Price (Z)')) || 0,
+    reorderPoint:    parseInt(get('ReOrder Level (Z)')) || 0,
+    locationName:    get('Location Name'),
+    warehouseName:   get('Warehouse Name (Z)'),
+    pkgHeight:       get('Package Height'),
+    pkgLength:       parseFloat(get('Package Length')) || 0,
+    pkgWidth:        parseFloat(get('Package Width')) || 0,
+    pkgWeight:       parseFloat(get('Package Weight (Z)')) || 0,
+    preferredVendor: get('Preferred Vendor (Z)'),
+    notionImages:    get('Images'),
     status:        'active',
     completeness,
     missing,
