@@ -2666,7 +2666,13 @@ function doImport() {
     if(typeof base.stockQty ==='string') base.stockQty =parseInt(base.stockQty)||0;
     return base;
   });
-  PRODUCTS=[...PRODUCTS,...newPs];
+  // Notion imports replace the entire catalog; CSV imports append
+  if (csvFileType === 'Notion') {
+    PRODUCTS = newPs;
+  } else {
+    PRODUCTS = [...PRODUCTS, ...newPs];
+  }
+  buildGroups();
   document.getElementById('product-count').textContent=PRODUCTS.length;
   csvHeaders=[];csvRows=[];csvMappings={};csvPlatform=null;
   schedulePersist();
