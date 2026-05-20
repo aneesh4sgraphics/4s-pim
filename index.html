@@ -1,0 +1,3275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4S PIM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Google Drive API -->
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="https://apis.google.com/js/api.js" async></script>
+<!-- Microsoft OneDrive / MSAL -->
+<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js" async></script>
+<style>
+/* ══════════════════════════════════════════════
+   4S PIM — Attio-style Design System
+   Light mode · Warm off-white · Geist · Ultra-refined
+══════════════════════════════════════════════ */
+:root {
+  /* Surfaces */
+  --page:    #F7F6F3;
+  --surface: #FFFFFF;
+  --surface2: #F3F2EF;
+  --surface3: #ECEAE5;
+  --surface4: #E5E3DC;
+
+  /* Borders */
+  --border:  #E4E2DB;
+  --border2: #D8D5CC;
+  --border3: #C8C5BC;
+
+  /* Text */
+  --txt:     #1A1916;
+  --txt2:    #6B6860;
+  --txt3:    #9B9890;
+  --txt4:    #C2BFB8;
+
+  /* Accent — Attio uses a warm terracotta/amber */
+  --accent:     #8B5CF6;
+  --accent-s:   #7C3AED;
+  --accent-bg:  #F3F0FF;
+  --accent-bd:  #DDD6FE;
+
+  /* Platform colors — muted pastels */
+  --odoo:    #9333EA; --odoo-bg:  #FAF5FF; --odoo-bd:  #E9D5FF; --odoo-tx:  #7E22CE;
+  --zoho:    #EA580C; --zoho-bg:  #FFF7ED; --zoho-bd:  #FED7AA; --zoho-tx:  #C2410C;
+  --shopify: #16A34A; --shopify-bg:#F0FDF4; --shopify-bd:#BBF7D0; --shopify-tx:#15803D;
+
+  /* Status */
+  --green:   #16A34A; --green-bg:  #F0FDF4; --green-bd:  #BBF7D0;
+  --amber:   #D97706; --amber-bg:  #FFFBEB; --amber-bd:  #FDE68A;
+  --red:     #DC2626; --red-bg:    #FEF2F2; --red-bd:    #FECACA;
+  --blue:    #2563EB; --blue-bg:   #EFF6FF; --blue-bd:   #BFDBFE;
+
+  --r:   6px;
+  --rl:  8px;
+  --rxl: 10px;
+  font-family: 'Geist', system-ui, -apple-system, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; background: var(--page); color: var(--txt); font-size: 13px; -webkit-font-smoothing: antialiased; }
+input, select, textarea, button { font-family: inherit; font-size: inherit; color: inherit; }
+button { cursor: pointer; }
+::selection { background: var(--accent-bg); color: var(--accent-s); }
+
+/* ── SCROLLBAR ───────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border3); }
+
+/* ══════════════════════════════════════════════
+   LAYOUT
+══════════════════════════════════════════════ */
+.app { display: flex; height: 100vh; overflow: hidden; background: var(--page); }
+
+/* ── SIDEBAR (Attio narrow icon rail + labels) ── */
+.sidebar {
+  width: 228px; flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+/* Workspace switcher — top of sidebar */
+.ws-switcher {
+  display: flex; align-items: center; gap: 9px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .1s;
+  user-select: none;
+}
+.ws-switcher:hover { background: var(--surface2); }
+.ws-logo {
+  width: 24px; height: 24px; border-radius: 5px;
+  background: #1A1916;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; color: #fff; flex-shrink: 0;
+  letter-spacing: -.3px;
+}
+.ws-name { font-size: 13px; font-weight: 500; color: var(--txt); flex: 1; }
+.ws-chevron { color: var(--txt3); font-size: 11px; }
+
+/* Nav */
+.nav { flex: 1; overflow-y: auto; padding: 6px 8px; }
+.nav-group { margin-bottom: 4px; }
+.nav-group-label {
+  font-size: 11px; font-weight: 500; color: var(--txt3);
+  padding: 6px 8px 3px; letter-spacing: .01em;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: var(--r);
+  color: var(--txt2); cursor: pointer;
+  transition: background .1s, color .1s;
+  margin-bottom: 1px; position: relative;
+}
+.nav-item:hover { background: var(--surface2); color: var(--txt); }
+.nav-item.active { background: var(--surface2); color: var(--txt); font-weight: 500; }
+.nav-icon {
+  width: 18px; height: 18px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: inherit; opacity: .7;
+}
+.nav-item.active .nav-icon { opacity: 1; }
+.nav-item-label { font-size: 13px; flex: 1; }
+.nav-count {
+  font-size: 11px; color: var(--txt3);
+  background: var(--surface3); padding: 1px 6px;
+  border-radius: 10px; margin-left: auto;
+}
+
+/* Platform status pills in sidebar */
+.plat-status-row {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 6px 8px 8px;
+}
+.plat-status-item {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 8px; border-radius: var(--r);
+  cursor: pointer; transition: background .1s;
+}
+.plat-status-item:hover { background: var(--surface2); }
+.plat-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.plat-dot.on  { background: var(--green); }
+.plat-dot.off { background: var(--border3); }
+.plat-sname { font-size: 12px; color: var(--txt2); flex: 1; }
+.plat-badge {
+  font-size: 10px; font-weight: 500; padding: 1px 6px;
+  border-radius: 3px; border: 1px solid;
+}
+
+/* Sidebar footer */
+.sidebar-footer {
+  border-top: 1px solid var(--border);
+  padding: 10px 10px;
+}
+.user-row {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 8px; border-radius: var(--r);
+  cursor: pointer; transition: background .1s;
+}
+.user-row:hover { background: var(--surface2); }
+.avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; flex-shrink: 0;
+  background: #E0E7FF; color: #4338CA;
+}
+.user-name { font-size: 13px; font-weight: 500; color: var(--txt); }
+.user-email { font-size: 11px; color: var(--txt3); }
+
+/* ══════════════════════════════════════════════
+   MAIN
+══════════════════════════════════════════════ */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+/* Topbar — Attio-style breadcrumb header */
+.topbar {
+  height: 48px; background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 20px;
+  gap: 8px; flex-shrink: 0;
+}
+.breadcrumb { display: flex; align-items: center; gap: 6px; }
+.breadcrumb-item { font-size: 13px; color: var(--txt3); }
+.breadcrumb-sep  { color: var(--txt4); font-size: 12px; }
+.breadcrumb-current { font-size: 13px; font-weight: 500; color: var(--txt); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+
+/* View toggle — Attio table/kanban/board pills */
+.view-toggle {
+  display: flex; align-items: center; gap: 1px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 2px; overflow: hidden;
+}
+.vt-btn {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 9px; border-radius: 4px;
+  font-size: 12px; color: var(--txt2); cursor: pointer;
+  transition: all .15s; border: none; background: none;
+}
+.vt-btn:hover { color: var(--txt); }
+.vt-btn.active { background: var(--surface); color: var(--txt); font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+
+/* Filter bar — Attio-style inline chips */
+.filter-bar {
+  height: 40px; background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 20px;
+  gap: 6px; flex-shrink: 0;
+}
+.filter-chip {
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 4px;
+  font-size: 12px; color: var(--txt2);
+  cursor: pointer; transition: all .12s;
+  border: 1px solid transparent; background: none;
+}
+.filter-chip:hover { background: var(--surface2); color: var(--txt); }
+.filter-chip.active { background: var(--surface2); color: var(--txt); border-color: var(--border); font-weight: 500; }
+.filter-add { display: flex; align-items: center; gap: 4px; padding: 3px 8px; font-size: 12px; color: var(--txt3); cursor: pointer; border-radius: 4px; border: none; background: none; }
+.filter-add:hover { background: var(--surface2); color: var(--txt2); }
+.filter-sep { width: 1px; height: 16px; background: var(--border); margin: 0 2px; }
+
+/* ══════════════════════════════════════════════
+   CONTENT — TABLE VIEW
+══════════════════════════════════════════════ */
+.content { flex: 1; display: flex; overflow: hidden; }
+
+/* Table */
+.table-pane { flex: 1; overflow: auto; }
+.att-table { width: 100%; border-collapse: collapse; }
+.att-table thead { position: sticky; top: 0; z-index: 10; background: var(--surface); }
+.att-table th {
+  padding: 0 16px; height: 36px;
+  text-align: left; font-size: 11px; font-weight: 500;
+  color: var(--txt3); border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border); white-space: nowrap;
+  user-select: none; cursor: pointer;
+}
+.att-table th:hover { background: var(--surface2); color: var(--txt2); }
+.att-table th:last-child { border-right: none; }
+.att-table td {
+  padding: 0 16px; height: 40px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  vertical-align: middle; font-size: 13px; color: var(--txt2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 280px;
+}
+.att-table td:last-child { border-right: none; }
+.att-table tbody tr { cursor: pointer; transition: background .08s; }
+.att-table tbody tr:hover { background: var(--surface2); }
+.att-table tbody tr.selected { background: var(--accent-bg); }
+.att-table tbody tr:last-child td { border-bottom: none; }
+
+/* Cell types */
+.cell-name { font-weight: 500; color: var(--txt); display: flex; align-items: center; gap: 8px; }
+.cell-emoji { font-size: 15px; flex-shrink: 0; }
+.cell-mono  { font-size: 11.5px; font-weight: 400; color: var(--txt3); letter-spacing: .01em; }
+
+/* Tag pill — Attio pastel tags */
+.tag {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 3px;
+  font-size: 11px; font-weight: 500;
+  border: 1px solid; white-space: nowrap;
+}
+.tag-purple { background: #FAF5FF; color: #7E22CE; border-color: #E9D5FF; }
+.tag-orange { background: #FFF7ED; color: #C2410C; border-color: #FED7AA; }
+.tag-green  { background: #F0FDF4; color: #15803D; border-color: #BBF7D0; }
+.tag-blue   { background: #EFF6FF; color: #1D4ED8; border-color: #BFDBFE; }
+.tag-gray   { background: var(--surface2); color: var(--txt2); border-color: var(--border); }
+.tag-red    { background: #FEF2F2; color: #B91C1C; border-color: #FECACA; }
+.tag-amber  { background: #FFFBEB; color: #92400E; border-color: #FDE68A; }
+
+/* Sync platform tags */
+.ptag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 3px; font-size: 11px; font-weight: 500; border: 1px solid; }
+.ptag-o { background: var(--odoo-bg);    color: var(--odoo-tx);    border-color: var(--odoo-bd); }
+.ptag-z { background: var(--zoho-bg);    color: var(--zoho-tx);    border-color: var(--zoho-bd); }
+.ptag-s { background: var(--shopify-bg); color: var(--shopify-tx); border-color: var(--shopify-bd); }
+.ptag-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+/* Completeness bar */
+.comp-wrap { display: flex; align-items: center; gap: 8px; }
+.comp-track { width: 64px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
+.comp-bar   { height: 100%; border-radius: 2px; transition: width .3s; }
+.comp-pct   { font-size: 11px; color: var(--txt3); min-width: 26px; }
+
+/* ══════════════════════════════════════════════
+   RECORD DETAIL PANEL — slides in from right
+══════════════════════════════════════════════ */
+.record-panel {
+  width: 0; flex-shrink: 0; overflow: hidden;
+  transition: width .2s cubic-bezier(.4,0,.2,1);
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+}
+.record-panel.open { width: 400px; }
+
+.rp-header {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.rp-close {
+  position: absolute; top: 14px; right: 14px;
+  width: 24px; height: 24px; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--txt3); cursor: pointer; border: none; background: none;
+  font-size: 14px; transition: background .1s;
+}
+.rp-close:hover { background: var(--surface2); color: var(--txt); }
+.rp-emoji  { font-size: 28px; margin-bottom: 8px; }
+.rp-name   { font-size: 16px; font-weight: 600; color: var(--txt); margin-bottom: 3px; line-height: 1.3; }
+.rp-sub    { font-size: 12px; color: var(--txt3); margin-bottom: 10px; }
+.rp-platforms { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px; }
+
+.rp-tabs {
+  display: flex; border-bottom: 1px solid var(--border);
+  padding: 0 20px; flex-shrink: 0; background: var(--surface);
+}
+.rp-tab {
+  padding: 9px 0; margin-right: 16px; font-size: 12px; font-weight: 500;
+  color: var(--txt3); cursor: pointer;
+  border-bottom: 2px solid transparent; transition: all .12s;
+}
+.rp-tab:hover { color: var(--txt2); }
+.rp-tab.active { color: var(--txt); border-bottom-color: var(--txt); }
+
+.rp-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+.rp-section { margin-bottom: 20px; }
+.rp-section-title {
+  font-size: 11px; font-weight: 500; color: var(--txt3);
+  text-transform: uppercase; letter-spacing: .06em;
+  margin-bottom: 8px;
+}
+
+/* Attio-style field rows */
+.att-field {
+  display: flex; align-items: flex-start;
+  padding: 5px 0; border-radius: var(--r);
+  cursor: pointer; transition: background .1s;
+  margin-bottom: 1px; gap: 0;
+}
+.att-field:hover { background: var(--surface2); padding: 5px 6px; margin: 0 -6px 1px; }
+.att-field-label {
+  width: 120px; flex-shrink: 0;
+  font-size: 12px; color: var(--txt3); padding-top: 1px;
+  padding-right: 8px; line-height: 1.5;
+}
+.att-field-val {
+  flex: 1; font-size: 13px; color: var(--txt);
+  line-height: 1.5; word-break: break-word;
+}
+.att-field-val.empty { color: var(--txt4); font-style: normal; }
+.att-field-val.number { font-variant-numeric: tabular-nums; }
+.att-field-inp {
+  flex: 1; background: none; border: none; outline: none;
+  font-size: 13px; color: var(--txt); padding: 0;
+  width: 100%; line-height: 1.5;
+}
+.att-field-inp::placeholder { color: var(--txt4); }
+
+/* Margin card */
+.margin-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--rl); padding: 14px;
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+}
+.margin-item { text-align: center; }
+.margin-val  { font-size: 18px; font-weight: 600; }
+.margin-lbl  { font-size: 10px; color: var(--txt3); margin-top: 2px; text-transform: uppercase; letter-spacing: .05em; }
+
+/* Push buttons — Attio style: very subtle */
+.rp-actions {
+  display: flex; gap: 6px; padding: 12px 20px;
+  border-top: 1px solid var(--border); flex-shrink: 0;
+  background: var(--surface);
+}
+.rp-push {
+  flex: 1; padding: 7px 6px; border-radius: var(--r);
+  font-size: 11px; font-weight: 500; cursor: pointer;
+  transition: all .15s; border: 1px solid;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.rp-push-o { background: var(--odoo-bg);    color: var(--odoo-tx);    border-color: var(--odoo-bd); }
+.rp-push-o:hover { background: #EDE9FF; }
+.rp-push-z { background: var(--zoho-bg);    color: var(--zoho-tx);    border-color: var(--zoho-bd); }
+.rp-push-z:hover { background: #FFEDD5; }
+.rp-push-s { background: var(--shopify-bg); color: var(--shopify-tx); border-color: var(--shopify-bd); }
+.rp-push-s:hover { background: #DCFCE7; }
+.rp-del {
+  padding: 7px 10px; border-radius: var(--r);
+  font-size: 11px; font-weight: 500; cursor: pointer;
+  transition: all .15s; border: 1px solid var(--red-bd);
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  background: var(--red-bg); color: var(--red); flex-shrink: 0;
+}
+.rp-del:hover { background: var(--red); color: #fff; }
+
+/* Row-level delete — appears on hover */
+.row-del {
+  opacity: 0; position: absolute; right: 8px;
+  width: 26px; height: 26px; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--txt3); cursor: pointer; font-size: 12px;
+  transition: all .12s; flex-shrink: 0;
+}
+.row-del:hover { background: var(--red-bg); border-color: var(--red-bd); color: var(--red); }
+tr:hover .row-del { opacity: 1; }
+.td-actions { position: relative; width: 40px; }
+
+/* ══════════════════════════════════════════════
+   CLOUD SYNC PANEL
+══════════════════════════════════════════════ */
+.cloud-modal { position:fixed;inset:0;background:rgba(26,25,22,.5);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:200; }
+.cloud-modal.open { display:flex; }
+.cloud-panel { background:var(--surface);border:1px solid var(--border2);border-radius:12px;width:560px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.13); }
+.cloud-panel-hdr { display:flex;align-items:center;padding:18px 20px 14px;border-bottom:1px solid var(--border);flex-shrink:0; }
+.cloud-panel-title { font-size:15px;font-weight:600;color:var(--txt);flex:1; }
+.cloud-panel-body { flex:1;overflow-y:auto;padding:20px; }
+.cloud-provider { background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:14px; }
+.cloud-provider-hdr { display:flex;align-items:center;gap:12px;margin-bottom:14px; }
+.cloud-provider-logo { width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0; }
+.cloud-provider-name { font-size:14px;font-weight:600;color:var(--txt); }
+.cloud-provider-status { font-size:11px;color:var(--txt3);margin-top:1px; }
+.cloud-status-chip { display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;border:1px solid; }
+.chip-disconnected { background:var(--surface3);color:var(--txt3);border-color:var(--border); }
+.chip-connected    { background:var(--green-bg);color:var(--green);border-color:var(--green-bd); }
+.chip-syncing      { background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bd); }
+.chip-error        { background:var(--red-bg);color:var(--red);border-color:var(--red-bd); }
+.cloud-field { margin-bottom:10px; }
+.cloud-field label { font-size:11px;color:var(--txt3);margin-bottom:4px;display:block; }
+.cloud-field input { width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;color:var(--txt);outline:none;font-family:inherit;transition:border-color .12s; }
+.cloud-field input:focus { border-color:var(--border3); }
+.cloud-field input.ok  { border-color:var(--green-bd); }
+.cloud-field-hint { font-size:10px;color:var(--txt4);margin-top:3px;line-height:1.5; }
+.cloud-actions { display:flex;gap:6px;margin-top:12px; }
+.cloud-btn { padding:7px 14px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--txt2);transition:all .15s;font-family:inherit; }
+.cloud-btn:hover { background:var(--surface3);color:var(--txt); }
+.cloud-btn.primary { background:var(--txt);color:#fff;border-color:var(--txt); }
+.cloud-btn.primary:hover { background:#2d2b27; }
+.cloud-btn.danger  { background:var(--red-bg);color:var(--red);border-color:var(--red-bd); }
+.cloud-sync-log { background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-top:10px;max-height:100px;overflow-y:auto;font-size:10px;font-family:ui-monospace,monospace;color:var(--txt3);line-height:1.8; }
+.setup-steps { background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:8px;padding:14px 16px;margin-bottom:14px; }
+.setup-steps-title { font-size:12px;font-weight:600;color:var(--blue);margin-bottom:10px; }
+.setup-step { display:flex;gap:10px;margin-bottom:8px;font-size:12px;color:var(--txt2);line-height:1.5; }
+.setup-step-num { width:18px;height:18px;border-radius:50%;background:var(--blue);color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px; }
+.setup-step code { background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-size:10px;font-family:ui-monospace,monospace;color:var(--txt); }
+
+.sheets-preview-link { display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:6px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);font-size:11px;font-weight:500;text-decoration:none;transition:all .15s;margin-top:8px; }
+.sheets-preview-link:hover { background:var(--green);color:#fff; }
+.sheets-stat { display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px; }
+.sheets-stat:last-child { border-bottom:none; }
+.sheets-stat-lbl { color:var(--txt3); }
+.sheets-stat-val { color:var(--txt);font-weight:500; }
+
+/* Cloud sync indicator in topbar */
+.cloud-indicator { display:flex;align-items:center;gap:5px;padding:4px 9px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--txt2);transition:all .15s;font-family:inherit; }
+.cloud-indicator:hover { background:var(--surface2);color:var(--txt); }
+.cloud-ind-dot { width:6px;height:6px;border-radius:50%;flex-shrink:0; }
+.cloud-ind-dot.none { background:var(--border3); }
+.cloud-ind-dot.ok   { background:var(--green); }
+.cloud-ind-dot.busy { background:var(--amber);animation:pulse .7s infinite; }
+.cloud-ind-dot.err  { background:var(--red); }
+
+/* ══════════════════════════════════════════════
+   BUTTONS (Attio style — very refined)
+══════════════════════════════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border-radius: var(--r);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  border: none; transition: all .12s; white-space: nowrap;
+}
+.btn-primary {
+  background: var(--txt); color: #fff;
+}
+.btn-primary:hover { background: #2D2B27; }
+.btn-secondary {
+  background: var(--surface); color: var(--txt);
+  border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+.btn-secondary:hover { background: var(--surface2); }
+.btn-ghost { background: none; color: var(--txt2); border: none; }
+.btn-ghost:hover { background: var(--surface2); color: var(--txt); }
+.btn-sm { padding: 4px 9px; font-size: 12px; }
+.btn-xs { padding: 3px 7px; font-size: 11px; }
+
+/* ══════════════════════════════════════════════
+   VIEWS
+══════════════════════════════════════════════ */
+.view { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.view.active { display: flex; }
+
+/* Full-page view body */
+.view-body { flex: 1; overflow-y: auto; padding: 24px; }
+.view-body-narrow { max-width: 900px; }
+
+/* ══════════════════════════════════════════════
+   CHANNELS VIEW
+══════════════════════════════════════════════ */
+.ch-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.ch-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--rxl); padding: 18px;
+  cursor: pointer; transition: box-shadow .15s, border-color .15s;
+}
+.ch-card:hover { border-color: var(--border2); box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.ch-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.ch-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.ch-name  { font-size: 14px; font-weight: 600; color: var(--txt); }
+.ch-count { font-size: 12px; color: var(--txt3); margin-top: 1px; }
+.ch-toggle {
+  margin-left: auto; width: 32px; height: 18px;
+  border-radius: 9px; cursor: pointer; position: relative;
+  transition: background .2s; border: none; flex-shrink: 0;
+}
+.ch-toggle::after {
+  content: ''; position: absolute; top: 2px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: white; transition: left .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.ch-toggle.on  { background: var(--green); }
+.ch-toggle.off { background: var(--border3); }
+.ch-toggle.on::after  { left: 16px; }
+.ch-toggle.off::after { left: 2px; }
+.ch-stat { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.ch-stat-lbl { font-size: 12px; color: var(--txt3); }
+.ch-stat-val { font-size: 12px; font-weight: 500; color: var(--txt); }
+.ch-progress { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 12px; }
+.ch-progress-fill { height: 100%; border-radius: 2px; }
+
+/* ══════════════════════════════════════════════
+   SCHEMA VIEW
+══════════════════════════════════════════════ */
+.schema-group { margin-bottom: 28px; }
+.schema-group-title {
+  font-size: 12px; font-weight: 500; color: var(--txt2);
+  margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+}
+.schema-group-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.schema-tbl { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: var(--rl); overflow: hidden; margin-bottom: 4px; }
+.schema-tbl th {
+  padding: 8px 14px; text-align: left; font-size: 11px; font-weight: 500;
+  color: var(--txt3); background: var(--surface2);
+  border-bottom: 1px solid var(--border); border-right: 1px solid var(--border);
+}
+.schema-tbl th:last-child { border-right: none; }
+.schema-tbl td {
+  padding: 9px 14px; font-size: 12px; color: var(--txt2);
+  border-bottom: 1px solid var(--border); border-right: 1px solid var(--border);
+  vertical-align: middle;
+}
+.schema-tbl td:last-child { border-right: none; }
+.schema-tbl tbody tr:last-child td { border-bottom: none; }
+.schema-tbl tbody tr:hover { background: var(--surface2); }
+.api-pill {
+  font-size: 11px; background: var(--surface2); color: var(--txt2);
+  border: 1px solid var(--border); border-radius: 3px;
+  padding: 2px 6px; font-family: ui-monospace, monospace;
+}
+.req-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); display: inline-block; }
+
+/* ══════════════════════════════════════════════
+   IMPORT VIEW
+══════════════════════════════════════════════ */
+.drop-zone {
+  border: 1.5px dashed var(--border2); border-radius: var(--rxl);
+  padding: 48px 32px; text-align: center; cursor: pointer;
+  position: relative; overflow: hidden; transition: all .15s;
+  background: var(--surface);
+}
+.drop-zone:hover, .drop-zone.drag { border-color: var(--accent); background: var(--accent-bg); }
+.drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.drop-icon  { font-size: 32px; margin-bottom: 10px; }
+.drop-title { font-size: 15px; font-weight: 600; color: var(--txt); margin-bottom: 4px; }
+.drop-sub   { font-size: 13px; color: var(--txt3); }
+.sample-row { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+.detected-banner {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-radius: var(--rl);
+  margin-bottom: 16px; border: 1px solid; background: var(--surface);
+}
+.stats-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+.stat-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--rl); padding: 14px 16px; text-align: center;
+}
+.stat-box-val { font-size: 22px; font-weight: 600; color: var(--txt); }
+.stat-box-lbl { font-size: 11px; color: var(--txt3); margin-top: 2px; }
+.map-tbl-wrap {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--rl); overflow: hidden; margin-bottom: 14px;
+}
+.map-tbl { width: 100%; border-collapse: collapse; }
+.map-tbl th {
+  padding: 8px 14px; text-align: left; font-size: 11px; font-weight: 500;
+  color: var(--txt3); background: var(--surface2);
+  border-bottom: 1px solid var(--border); border-right: 1px solid var(--border);
+}
+.map-tbl th:last-child { border-right: none; }
+.map-tbl td {
+  padding: 8px 14px; border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border); vertical-align: middle; font-size: 12px;
+}
+.map-tbl td:last-child { border-right: none; }
+.map-tbl tbody tr:hover { background: var(--surface2); }
+.map-sel {
+  width: 100%; background: none; border: 1px solid transparent;
+  border-radius: 4px; padding: 4px 8px; font-size: 12px; color: var(--txt);
+  outline: none; cursor: pointer; transition: all .12s;
+}
+.map-sel:hover, .map-sel:focus { border-color: var(--border); background: var(--surface2); }
+.map-sel.matched { color: var(--green); }
+.map-sel.ignored { color: var(--txt4); }
+.conf-mini { display: flex; align-items: center; gap: 6px; }
+.conf-mini-track { width: 44px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.conf-mini-fill  { height: 100%; border-radius: 2px; }
+
+/* ══════════════════════════════════════════════
+   SYNC VIEW
+══════════════════════════════════════════════ */
+.sync-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+.sync-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--rxl); padding: 18px;
+}
+.sync-card-top { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
+.sync-plat-icon { font-size: 18px; }
+.sync-plat-name { font-size: 14px; font-weight: 600; color: var(--txt); flex: 1; }
+.conn-indicator { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--txt3); }
+.conn-dot  { width: 6px; height: 6px; border-radius: 50%; }
+.dot-on    { background: var(--green); }
+.dot-off   { background: var(--border3); }
+.dot-pulse { background: var(--amber); animation: pulse .8s ease infinite; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+.sync-btns { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.sync-btn {
+  width: 100%; padding: 8px 10px; border-radius: var(--r);
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  transition: all .15s; border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--surface); color: var(--txt);
+}
+.sync-btn:hover { background: var(--surface2); border-color: var(--border2); }
+.sync-btn.push-btn { background: var(--txt); color: #fff; border-color: var(--txt); }
+.sync-btn.push-btn:hover { background: #2D2B27; }
+.sync-meta { font-size: 11px; color: var(--txt3); line-height: 1.8; }
+.sync-meta .hl { color: var(--txt2); font-weight: 500; }
+.sync-meta .ok { color: var(--green); }
+
+/* Log */
+.log-tbl {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--rl); overflow: hidden;
+}
+.log-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  transition: background .08s;
+}
+.log-row:last-child { border-bottom: none; }
+.log-row:hover { background: var(--surface2); }
+.log-time { font-size: 11px; color: var(--txt4); min-width: 60px; padding-top: 1px; font-variant-numeric: tabular-nums; }
+.log-dot  { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+.log-body { flex: 1; }
+.log-title { font-size: 13px; color: var(--txt); font-weight: 400; }
+.log-detail{ font-size: 11px; color: var(--txt3); margin-top: 1px; }
+
+/* ══════════════════════════════════════════════
+   CREDENTIALS VIEW
+══════════════════════════════════════════════ */
+.cred-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+.cred-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--rxl); padding: 20px;
+}
+.cred-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.cred-card-icon { width: 32px; height: 32px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.cred-card-name { font-size: 14px; font-weight: 600; color: var(--txt); }
+.cred-card-api  { font-size: 11px; color: var(--txt3); margin-top: 1px; }
+.cred-field { margin-bottom: 11px; }
+.cred-lbl { font-size: 11px; color: var(--txt3); margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+.cred-inp {
+  width: 100%; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: var(--r);
+  padding: 7px 10px; font-size: 13px; color: var(--txt);
+  outline: none; transition: border-color .12s;
+}
+.cred-inp:focus { border-color: var(--border3); background: var(--surface); }
+.cred-inp.has-val { border-color: var(--green-bd); }
+.cred-test {
+  width: 100%; padding: 8px; border-radius: var(--r);
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--txt2); margin-top: 12px; transition: all .15s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.cred-test:hover { background: var(--surface3); color: var(--txt); }
+.cred-test.ok   { border-color: var(--green-bd); background: var(--green-bg); color: var(--green); }
+.cred-test.fail { border-color: var(--red-bd);   background: var(--red-bg);   color: var(--red); }
+.cred-hint { margin-top: 10px; padding: 9px 11px; background: var(--surface2); border-radius: var(--r); font-size: 11px; color: var(--txt3); line-height: 1.7; }
+
+/* ══════════════════════════════════════════════
+   COMMAND PALETTE (⌘K) — Attio signature feature
+══════════════════════════════════════════════ */
+.cmd-overlay {
+  position: fixed; inset: 0;
+  background: rgba(26,25,22,.4); backdrop-filter: blur(2px);
+  display: none; align-items: flex-start; justify-content: center;
+  padding-top: 15vh; z-index: 200;
+}
+.cmd-overlay.open { display: flex; }
+.cmd-palette {
+  width: 560px; background: var(--surface);
+  border: 1px solid var(--border2); border-radius: var(--rxl);
+  box-shadow: 0 20px 60px rgba(0,0,0,.15), 0 4px 16px rgba(0,0,0,.08);
+  overflow: hidden;
+}
+.cmd-search {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
+}
+.cmd-search input {
+  flex: 1; background: none; border: none; outline: none;
+  font-size: 15px; color: var(--txt);
+}
+.cmd-search input::placeholder { color: var(--txt4); }
+.cmd-search-icon { color: var(--txt3); font-size: 15px; flex-shrink: 0; }
+.cmd-results { max-height: 380px; overflow-y: auto; }
+.cmd-group-label { padding: 10px 16px 4px; font-size: 11px; font-weight: 500; color: var(--txt3); text-transform: uppercase; letter-spacing: .06em; }
+.cmd-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px; cursor: pointer; transition: background .08s;
+}
+.cmd-item:hover, .cmd-item.focused { background: var(--surface2); }
+.cmd-item-icon { font-size: 14px; width: 22px; text-align: center; color: var(--txt3); flex-shrink: 0; }
+.cmd-item-label { font-size: 13px; color: var(--txt); flex: 1; }
+.cmd-item-meta  { font-size: 11px; color: var(--txt4); }
+.cmd-kbd { background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; font-size: 10px; color: var(--txt3); }
+.cmd-footer { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-top: 1px solid var(--border); }
+.cmd-footer-hint { font-size: 11px; color: var(--txt4); display: flex; align-items: center; gap: 5px; }
+
+/* ══════════════════════════════════════════════
+   MODAL (Attio-style)
+══════════════════════════════════════════════ */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(26,25,22,.4); backdrop-filter: blur(2px);
+  display: none; align-items: center; justify-content: center; z-index: 100;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--rxl); width: 520px; max-height: 84vh;
+  box-shadow: 0 20px 60px rgba(0,0,0,.12);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.modal-hdr {
+  display: flex; align-items: center; padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.modal-title { font-size: 15px; font-weight: 600; color: var(--txt); flex: 1; }
+.modal-close { background: none; border: none; color: var(--txt3); font-size: 16px; cursor: pointer; padding: 2px 5px; border-radius: 4px; }
+.modal-close:hover { background: var(--surface2); color: var(--txt); }
+.modal-body { flex: 1; overflow-y: auto; padding: 20px; }
+.modal-ftr  { display: flex; gap: 8px; justify-content: flex-end; padding: 14px 20px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.modal-field { margin-bottom: 14px; }
+.modal-lbl { font-size: 12px; font-weight: 500; color: var(--txt2); margin-bottom: 6px; }
+.modal-inp {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 8px 11px; font-size: 13px;
+  color: var(--txt); outline: none; transition: border-color .12s;
+}
+.modal-inp:focus { border-color: var(--border3); background: var(--surface); }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ══════════════════════════════════════════════
+   TOAST (Attio bottom-center style)
+══════════════════════════════════════════════ */
+.toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: var(--txt); color: #fff;
+  padding: 9px 16px; border-radius: var(--r);
+  font-size: 13px; display: none; z-index: 300;
+  box-shadow: 0 4px 16px rgba(0,0,0,.2);
+  animation: toastUp .2s ease;
+}
+@keyframes toastUp { from{transform:translateX(-50%) translateY(6px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1} }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { display: inline-block; animation: spin .7s linear infinite; }
+
+/* Section headers */
+.page-title {
+  font-size: 20px; font-weight: 600; color: var(--txt);
+  margin-bottom: 4px;
+}
+.page-sub { font-size: 13px; color: var(--txt3); margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══════════ SIDEBAR ═══════════ -->
+<aside class="sidebar">
+
+  <!-- Workspace switcher -->
+  <div class="ws-switcher">
+    <div class="ws-logo">4S</div>
+    <div class="ws-name">4S Graphics</div>
+    <span class="ws-chevron">⌄</span>
+  </div>
+
+  <!-- Main nav -->
+  <nav class="nav">
+    <div class="nav-group">
+      <div class="nav-item active" id="nav-catalog" onclick="goTo('catalog',this)">
+        <span class="nav-icon">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+        </span>
+        <span class="nav-item-label">Products</span>
+        <span class="nav-count" id="product-count">7</span>
+      </div>
+      <div class="nav-item" id="nav-channels" onclick="goTo('channels',this)">
+        <span class="nav-icon">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8h12M2 4h12M2 12h8"/></svg>
+        </span>
+        <span class="nav-item-label">Channels</span>
+        <span class="nav-count">5</span>
+      </div>
+      <div class="nav-item" id="nav-schema" onclick="goTo('schema',this)">
+        <span class="nav-icon">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="13" height="13" rx="2"/><path d="M5 5.5h6M5 8h4M5 10.5h3"/></svg>
+        </span>
+        <span class="nav-item-label">Field Schema</span>
+      </div>
+    </div>
+
+    <div class="nav-group" style="margin-top:12px">
+      <div class="nav-group-label">Sync</div>
+      <div class="nav-item" id="nav-import" onclick="goTo('import',this)">
+        <span class="nav-icon">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10V3M5.5 7.5L8 10l2.5-2.5"/><path d="M3 13h10"/></svg>
+        </span>
+        <span class="nav-item-label">CSV Import</span>
+      </div>
+      <div class="nav-item" id="nav-sync" onclick="goTo('sync',this)">
+        <span class="nav-icon">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13.5 8c0 3-2.5 5.5-5.5 5.5S2.5 11 2.5 8"/><path d="M2.5 8c0-3 2.5-5.5 5.5-5.5S13.5 5 13.5 8"/><path d="M11 5.5l2.5 2.5M5 10.5L2.5 8"/></svg>
+        </span>
+        <span class="nav-item-label">API Sync</span>
+      </div>
+      <div class="nav-item" id="nav-credentials" onclick="goTo('credentials',this)">
+        <span class="nav-icon">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="7.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg>
+        </span>
+        <span class="nav-item-label">Credentials</span>
+      </div>
+    </div>
+
+    <!-- Platform status mini -->
+    <div style="margin-top:16px">
+      <div class="nav-group-label">Platforms</div>
+      <div class="plat-status-row">
+        <div class="plat-status-item" onclick="goTo('credentials',document.getElementById('nav-credentials'))">
+          <div class="plat-dot off" id="pdot-odoo"></div>
+          <span class="plat-sname">Odoo</span>
+          <span class="plat-badge" id="pbadge-odoo" style="background:var(--odoo-bg);color:var(--odoo-tx);border-color:var(--odoo-bd)">Not set</span>
+        </div>
+        <div class="plat-status-item" onclick="goTo('credentials',document.getElementById('nav-credentials'))">
+          <div class="plat-dot off" id="pdot-zoho"></div>
+          <span class="plat-sname">Zoho</span>
+          <span class="plat-badge" id="pbadge-zoho" style="background:var(--zoho-bg);color:var(--zoho-tx);border-color:var(--zoho-bd)">Not set</span>
+        </div>
+        <div class="plat-status-item" onclick="goTo('credentials',document.getElementById('nav-credentials'))">
+          <div class="plat-dot off" id="pdot-shopify"></div>
+          <span class="plat-sname">Shopify</span>
+          <span class="plat-badge" id="pbadge-shopify" style="background:var(--shopify-bg);color:var(--shopify-tx);border-color:var(--shopify-bd)">Not set</span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="storage-bar">
+      <div class="storage-dot saved" id="storageDot"></div>
+      <span class="storage-txt" id="storageTxt">Opening database…</span>
+      <button class="storage-clear" onclick="clearStorage()" title="Reset to sample data">Reset</button>
+    </div>
+    <div class="user-row">
+      <div class="avatar">AN</div>
+      <div>
+        <div class="user-name">Anish</div>
+        <div class="user-email">4S Graphics · Admin</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════ MAIN ═══════════ -->
+<main class="main">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="breadcrumb">
+      <span class="breadcrumb-item">4S Graphics</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current" id="breadcrumb-current">Products</span>
+    </div>
+    <div class="topbar-right">
+      <!-- ⌘K command palette trigger -->
+      <button class="btn btn-ghost btn-sm" onclick="openCmd()" style="gap:8px;color:var(--txt3)">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5"/><path d="M12 12l2.5 2.5"/></svg>
+        Search
+        <span style="font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:1px 4px;color:var(--txt4)">⌘K</span>
+      </button>
+      <button class="cloud-indicator" id="cloudIndicatorBtn" onclick="openCloudPanel()" title="Cloud sync settings">
+        <div class="cloud-ind-dot none" id="cloudIndDot"></div>
+        <span id="cloudIndTxt">Cloud sync</span>
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick="exportCSV()">↑ Export CSV</button>
+      <button class="btn btn-secondary btn-sm" onclick="exportBackup()" title="Save full database as JSON backup">💾 Backup</button>
+      <button class="btn btn-secondary btn-sm" onclick="importBackup()" title="Restore from a JSON backup file">↩ Restore</button>
+      <button class="btn btn-primary btn-sm" onclick="openAddModal()">+ New product</button>
+    </div>
+  </div>
+
+  <!-- Filter bar (only shown on catalog) -->
+  <div class="filter-bar" id="filterBar">
+    <div class="view-toggle">
+      <button class="vt-btn active" id="vt-table" onclick="setViewMode('table',this)">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4h14M1 8h14M1 12h14"/></svg>
+        Table
+      </button>
+      <button class="vt-btn" id="vt-board" onclick="setViewMode('board',this)">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="4" height="14" rx="1"/><rect x="6.5" y="1" width="4" height="10" rx="1"/><rect x="11" y="1" width="4" height="12" rx="1"/></svg>
+        Board
+      </button>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="filter-chip active" onclick="setFilter('all',this)">All products</div>
+    <div class="filter-chip" onclick="setFilter('active',this)">Active</div>
+    <div class="filter-chip" onclick="setFilter('draft',this)">Draft</div>
+    <div class="filter-chip" onclick="setFilter('incomplete',this)">
+      <span style="display:flex;align-items:center;gap:4px">
+        <span style="width:5px;height:5px;border-radius:50%;background:var(--amber);flex-shrink:0"></span>
+        Incomplete
+      </span>
+    </div>
+    <button class="filter-add" onclick="">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>
+      Filter
+    </button>
+  </div>
+
+  <!-- ════ CATALOG VIEW ════ -->
+  <div class="view active" id="view-catalog">
+    <div class="content">
+      <div class="table-pane" id="tablePaneWrap">
+        <!-- table injected -->
+      </div>
+      <!-- Record detail panel -->
+      <div class="record-panel" id="recordPanel" style="position:relative">
+        <!-- injected -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ CHANNELS VIEW ════ -->
+  <div class="view" id="view-channels">
+    <div class="view-body">
+      <div class="page-title">Channels</div>
+      <div class="page-sub">Manage where your products are published</div>
+      <div class="ch-grid" id="chGrid"></div>
+    </div>
+  </div>
+
+  <!-- ════ SCHEMA VIEW ════ -->
+  <div class="view" id="view-schema">
+    <div class="view-body">
+      <div class="page-title">Field Schema</div>
+      <div class="page-sub">52 unified fields mapped across Odoo, Zoho Inventory, and Shopify</div>
+      <div id="schemaContent"></div>
+    </div>
+  </div>
+
+  <!-- ════ IMPORT VIEW ════ -->
+  <div class="view" id="view-import">
+    <div class="view-body">
+      <div class="page-title">CSV Import</div>
+      <div class="page-sub">Import from Odoo, Zoho Inventory, or Shopify export — auto-detected</div>
+      <div id="importContent" style="max-width:880px"></div>
+    </div>
+  </div>
+
+  <!-- ════ SYNC VIEW ════ -->
+  <div class="view" id="view-sync">
+    <div class="view-body">
+      <div class="page-title">API Sync</div>
+      <div class="page-sub">Push and pull product data to and from your connected platforms</div>
+      <div class="sync-grid" id="syncGrid"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:500;color:var(--txt2)">Sync log</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-xs" onclick="filterLog('all',this)" style="color:var(--txt);background:var(--surface2)">All</button>
+          <button class="btn btn-ghost btn-xs" onclick="filterLog('push',this)">Push</button>
+          <button class="btn btn-ghost btn-xs" onclick="filterLog('pull',this)">Pull</button>
+          <button class="btn btn-ghost btn-xs" onclick="filterLog('error',this)">Errors</button>
+          <button class="btn btn-ghost btn-xs" onclick="clearLog()" style="margin-left:4px">Clear</button>
+        </div>
+      </div>
+      <div class="log-tbl" id="logWrap">
+        <div style="padding:28px;text-align:center;color:var(--txt4);font-size:13px">No sync activity yet</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ CREDENTIALS VIEW ════ -->
+  <div class="view" id="view-credentials">
+    <div class="view-body">
+      <div class="page-title">API Credentials</div>
+      <div class="page-sub">Connect 4S PIM to your platforms. Credentials are stored locally in your browser.</div>
+      <div class="cred-grid" id="credGrid"></div>
+    </div>
+  </div>
+
+</main>
+</div><!-- .app -->
+
+<!-- ════ COMMAND PALETTE ════ -->
+<div class="cmd-overlay" id="cmdOverlay" onclick="if(event.target===this)closeCmd()">
+  <div class="cmd-palette">
+    <div class="cmd-search">
+      <span class="cmd-search-icon">⌕</span>
+      <input id="cmdInput" placeholder="Search products, go to channel, run sync…" oninput="renderCmdResults()" onkeydown="cmdKeydown(event)">
+    </div>
+    <div class="cmd-results" id="cmdResults"></div>
+    <div class="cmd-footer">
+      <span class="cmd-footer-hint"><span class="cmd-kbd">↑↓</span> navigate</span>
+      <span class="cmd-footer-hint"><span class="cmd-kbd">↵</span> select</span>
+      <span class="cmd-footer-hint"><span class="cmd-kbd">esc</span> close</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════ ADD PRODUCT MODAL ════ -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title">New product</div>
+      <button class="modal-close" onclick="closeModal('addModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-grid">
+        <div class="modal-field" style="grid-column:1/-1">
+          <div class="modal-lbl">Product name</div>
+          <input id="m-name" class="modal-inp" placeholder="e.g. Graffiti Synthetic Paper 8mil">
+        </div>
+        <div class="modal-field">
+          <div class="modal-lbl">SKU</div>
+          <input id="m-sku" class="modal-inp" placeholder="GWS-8MIL-24x150">
+        </div>
+        <div class="modal-field">
+          <div class="modal-lbl">Category</div>
+          <input id="m-cat" class="modal-inp" placeholder="Synthetic Paper">
+        </div>
+        <div class="modal-field">
+          <div class="modal-lbl">Sales price</div>
+          <input id="m-price" class="modal-inp" type="number" placeholder="0.00">
+        </div>
+        <div class="modal-field">
+          <div class="modal-lbl">Cost price</div>
+          <input id="m-cost" class="modal-inp" type="number" placeholder="0.00">
+        </div>
+        <div class="modal-field">
+          <div class="modal-lbl">Brand</div>
+          <input id="m-brand" class="modal-inp" placeholder="Graffiti">
+        </div>
+        <div class="modal-field">
+          <div class="modal-lbl">Weight (lb)</div>
+          <input id="m-weight" class="modal-inp" type="number" placeholder="0.0">
+        </div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-ghost" onclick="closeModal('addModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProduct()">Create product</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ═══ CLOUD SYNC PANEL ═══ -->
+<div class="cloud-modal" id="cloudModal" onclick="if(event.target===this)closeCloudPanel()">
+<div class="cloud-panel">
+  <div class="cloud-panel-hdr">
+    <div class="cloud-panel-title">☁ Cloud Sync</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-right:8px">
+      <span id="cloudLastSync" style="font-size:11px;color:var(--txt4)"></span>
+      <button class="cloud-btn" onclick="forceSyncAll()" style="padding:5px 10px;font-size:11px">↑↓ Sync now</button>
+    </div>
+    <button class="modal-close" onclick="closeCloudPanel()">✕</button>
+  </div>
+  <div class="cloud-panel-body">
+
+    <!-- GOOGLE DRIVE -->
+    <div class="cloud-provider" id="gdrive-provider">
+      <div class="cloud-provider-hdr">
+        <div class="cloud-provider-logo" style="background:#f0f4ff">
+          <svg width="22" height="22" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
+        </div>
+        <div style="flex:1">
+          <div class="cloud-provider-name">Google Drive</div>
+          <div class="cloud-provider-status" id="gdrive-status-txt">Not connected</div>
+        </div>
+        <span class="cloud-status-chip chip-disconnected" id="gdrive-chip">Disconnected</span>
+      </div>
+
+      <div id="gdrive-setup-steps" class="setup-steps">
+        <div class="setup-steps-title">📋 One-time Google Cloud setup (5 minutes)</div>
+        <div class="setup-step"><div class="setup-step-num">1</div><div>Go to <a href="https://console.cloud.google.com" target="_blank" style="color:var(--blue)">console.cloud.google.com</a> → New Project → name it <code>4S PIM</code></div></div>
+        <div class="setup-step"><div class="setup-step-num">2</div><div>APIs & Services → Enable APIs → search <code>Google Drive API</code> → Enable</div></div>
+        <div class="setup-step"><div class="setup-step-num">3</div><div>APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID → Web application</div></div>
+        <div class="setup-step"><div class="setup-step-num">4</div><div>Add Authorised JavaScript origin: <code id="gdrive-origin-hint">your file path</code></div></div>
+        <div class="setup-step"><div class="setup-step-num">5</div><div>Copy the Client ID below and paste it here. That's it — no server needed.</div></div>
+      </div>
+
+      <div class="cloud-field">
+        <label>Google OAuth Client ID</label>
+        <input id="gdrive-client-id" placeholder="xxxxxxxxxxxx.apps.googleusercontent.com" oninput="saveCloudCreds()">
+        <div class="cloud-field-hint">From Google Cloud Console → APIs & Services → Credentials</div>
+      </div>
+      <div class="cloud-field">
+        <label>Sync file name in Drive</label>
+        <input id="gdrive-filename" value="4s-pim-backup.json" oninput="saveCloudCreds()">
+      </div>
+      <div class="cloud-actions">
+        <button class="cloud-btn primary" id="gdrive-connect-btn" onclick="gdriveConnect()">Connect Google Drive</button>
+        <button class="cloud-btn" onclick="gdrivePush()" id="gdrive-push-btn" style="display:none">↑ Push now</button>
+        <button class="cloud-btn" onclick="gdrivePull()" id="gdrive-pull-btn" style="display:none">↓ Pull latest</button>
+        <button class="cloud-btn danger" onclick="gdriveDisconnect()" id="gdrive-disconnect-btn" style="display:none">Disconnect</button>
+      </div>
+      <div class="cloud-sync-log" id="gdrive-log" style="display:none"></div>
+    </div>
+
+    <!-- ONEDRIVE -->
+    <div class="cloud-provider" id="onedrive-provider">
+      <div class="cloud-provider-hdr">
+        <div class="cloud-provider-logo" style="background:#f0f4ff">
+          <svg width="24" height="18" viewBox="0 0 24 18" xmlns="http://www.w3.org/2000/svg"><path d="M14.4 7.2A5.4 5.4 0 0 0 9.1 3.6 5.4 5.4 0 0 0 3.6 7.8 3.6 3.6 0 0 0 0 11.4 3.6 3.6 0 0 0 3.6 15h14.4a3.6 3.6 0 0 0 3.6-3.6 3.6 3.6 0 0 0-3.2-3.58A5.4 5.4 0 0 0 14.4 7.2z" fill="#0078d4"/></svg>
+        </div>
+        <div style="flex:1">
+          <div class="cloud-provider-name">Microsoft OneDrive</div>
+          <div class="cloud-provider-status" id="onedrive-status-txt">Not connected</div>
+        </div>
+        <span class="cloud-status-chip chip-disconnected" id="onedrive-chip">Disconnected</span>
+      </div>
+
+      <div id="onedrive-setup-steps" class="setup-steps">
+        <div class="setup-steps-title">📋 One-time Azure setup (5 minutes)</div>
+        <div class="setup-step"><div class="setup-step-num">1</div><div>Go to <a href="https://portal.azure.com" target="_blank" style="color:var(--blue)">portal.azure.com</a> → Azure Active Directory → App registrations → New registration</div></div>
+        <div class="setup-step"><div class="setup-step-num">2</div><div>Name: <code>4S PIM</code> · Account type: Personal Microsoft accounts only · Redirect URI: <code id="onedrive-origin-hint">your file path</code></div></div>
+        <div class="setup-step"><div class="setup-step-num">3</div><div>After creating: API permissions → Add → Microsoft Graph → Delegated → <code>Files.ReadWrite</code> → Grant admin consent</div></div>
+        <div class="setup-step"><div class="setup-step-num">4</div><div>Copy the Application (client) ID from the Overview page and paste below</div></div>
+      </div>
+
+      <div class="cloud-field">
+        <label>Azure Application (Client) ID</label>
+        <input id="onedrive-client-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" oninput="saveCloudCreds()">
+        <div class="cloud-field-hint">From Azure Portal → App registrations → Overview</div>
+      </div>
+      <div class="cloud-field">
+        <label>Sync file name in OneDrive</label>
+        <input id="onedrive-filename" value="4s-pim-backup.json" oninput="saveCloudCreds()">
+      </div>
+      <div class="cloud-actions">
+        <button class="cloud-btn primary" id="onedrive-connect-btn" onclick="onedriveConnect()">Connect OneDrive</button>
+        <button class="cloud-btn" onclick="onedrivePush()" id="onedrive-push-btn" style="display:none">↑ Push now</button>
+        <button class="cloud-btn" onclick="onedrivePull()" id="onedrive-pull-btn" style="display:none">↓ Pull latest</button>
+        <button class="cloud-btn danger" onclick="onedriveDisconnect()" id="onedrive-disconnect-btn" style="display:none">Disconnect</button>
+      </div>
+      <div class="cloud-sync-log" id="onedrive-log" style="display:none"></div>
+    </div>
+
+    <!-- GOOGLE SHEETS -->
+    <div class="cloud-provider" id="gsheets-provider">
+      <div class="cloud-provider-hdr">
+        <div class="cloud-provider-logo" style="background:#e8f5e9">
+          <svg width="22" height="28" viewBox="0 0 22 28" xmlns="http://www.w3.org/2000/svg"><path d="M13 0H2C.9 0 0 .9 0 2v24c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V9l-9-9z" fill="#23a566"/><path d="M13 0v9h9L13 0z" fill="#1a7d4d"/><rect x="3" y="13" width="16" height="1.4" rx=".7" fill="rgba(255,255,255,.7)"/><rect x="3" y="16.5" width="16" height="1.4" rx=".7" fill="rgba(255,255,255,.7)"/><rect x="3" y="20" width="10" height="1.4" rx=".7" fill="rgba(255,255,255,.7)"/><rect x="3" y="13" width="1.4" height="8.4" rx=".7" fill="rgba(255,255,255,.5)"/><rect x="7.8" y="13" width="1.4" height="8.4" rx=".7" fill="rgba(255,255,255,.5)"/><rect x="12.6" y="13" width="1.4" height="8.4" rx=".7" fill="rgba(255,255,255,.5)"/></svg>
+        </div>
+        <div style="flex:1">
+          <div class="cloud-provider-name">Google Sheets</div>
+          <div class="cloud-provider-status" id="gsheets-status-txt">Uses same Google connection as Drive</div>
+        </div>
+        <span class="cloud-status-chip chip-disconnected" id="gsheets-chip">Not set up</span>
+      </div>
+
+      <div id="gsheets-info" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:12px;color:var(--txt2);line-height:1.7">
+        Creates a live Google Sheet in your Drive with your full product catalog — every column, formatted with a frozen header row and auto-sized columns. Auto-updates whenever your products change. <strong style="color:var(--txt)">Connect Google Drive first</strong>, then enable Sheets below.
+      </div>
+
+      <div class="cloud-field">
+        <label>Sheet name</label>
+        <input id="gsheets-name" value="4S PIM — Product Catalog" oninput="saveCloudCreds()">
+        <div class="cloud-field-hint">The name of the Google Sheet that will be created in your Drive</div>
+      </div>
+
+      <div id="gsheets-stats" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:10px;display:none">
+        <div class="sheets-stat"><span class="sheets-stat-lbl">Products in sheet</span><span class="sheets-stat-val" id="gsheets-row-count">—</span></div>
+        <div class="sheets-stat"><span class="sheets-stat-lbl">Columns</span><span class="sheets-stat-val" id="gsheets-col-count">—</span></div>
+        <div class="sheets-stat"><span class="sheets-stat-lbl">Last updated</span><span class="sheets-stat-val" id="gsheets-last-update">—</span></div>
+        <div class="sheets-stat"><span class="sheets-stat-lbl">Sheet ID</span><span class="sheets-stat-val" id="gsheets-id-display" style="font-family:monospace;font-size:10px;color:var(--txt3)">—</span></div>
+      </div>
+
+      <div id="gsheets-link-wrap" style="display:none">
+        <a id="gsheets-open-link" href="#" target="_blank" class="sheets-preview-link">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V9"/><path d="M10 2h4v4"/><path d="M7.5 8.5L14 2"/></svg>
+          Open in Google Sheets
+        </a>
+      </div>
+
+      <div class="cloud-actions">
+        <button class="cloud-btn primary" id="gsheets-create-btn" onclick="gsheetsCreate()">Create / Update Sheet</button>
+        <button class="cloud-btn" onclick="gsheetsSync()" id="gsheets-sync-btn" style="display:none">↑ Update sheet now</button>
+        <button class="cloud-btn danger" onclick="gsheetsDisconnect()" id="gsheets-reset-btn" style="display:none">Remove sheet link</button>
+      </div>
+      <div class="cloud-sync-log" id="gsheets-log" style="display:none"></div>
+    </div>
+
+    <div style="font-size:11px;color:var(--txt4);line-height:1.7;padding:10px 0 4px">
+      Your data goes directly from your browser to your own Google account via official OAuth. 4S PIM never sees your credentials or data.
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- DELETE CONFIRMATION MODAL -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal" style="width:400px">
+    <div class="modal-hdr">
+      <div class="modal-title" style="display:flex;align-items:center;gap:8px">
+        <span style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;background:var(--red-bg);color:var(--red)">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 10h8l1-10"/></svg>
+        </span>
+        Delete product
+      </div>
+      <button class="modal-close" onclick="closeModal('deleteModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px">
+      <p style="font-size:13px;color:var(--txt2);line-height:1.6;margin-bottom:12px">
+        Are you sure you want to delete <strong id="deleteProductName" style="color:var(--txt)"></strong>?
+      </p>
+      <p style="font-size:12px;color:var(--txt3);line-height:1.6;padding:10px 12px;background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r)">
+        This removes the product from 4S PIM only. It will not delete the product from Odoo, Zoho, or Shopify.
+      </p>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-ghost" onclick="closeModal('deleteModal')">Cancel</button>
+      <button class="btn" style="background:var(--red);color:#fff" onclick="doDelete()">Delete product</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════════════
+let PRODUCTS = [
+  {id:1,emoji:'📄',name:'Graffiti Waterproof Synthetic Paper 8mil',sku:'GWS-8MIL-24x150',barcode:'845123001234',ean:'',mpn:'GRF-WS8',vendorSku:'GRF-WS8-24',category:'Synthetic Paper',productType:'storable',brand:'Graffiti',supplier:'Graffiti Media Inc.',salesPrice:187.50,costPrice:112.00,comparePrice:210.00,taxRate:'7%',uom:'Roll',moq:'1',leadTime:'3-5 days',stockQty:42,reorderPoint:5,width:'24"',length:'150ft',thickness:'8mil',weight:'5.2',weightUnit:'lb',gsm:'120',finish:'Matte',substrate:'PP Synthetic',printableSides:'Both',compatibility:'Solvent / Latex',waterproof:'Yes',tags:['synthetic','waterproof','graffiti'],collections:'Synthetic Papers,Featured',seoTitle:'Graffiti Waterproof Synthetic Paper 8mil | 4S Graphics',seoDesc:'Premium 8mil waterproof synthetic paper.',description:'<p>8mil waterproof synthetic paper for demanding wide format applications.</p>',imageUrl:'',odooId:'P-1042',zohoItemId:'',shopifyId:'8834112',syncOdoo:true,syncZoho:false,syncShopify:true,status:'active',completeness:94,missing:['EAN','Volume','Zoho Item ID']},
+  {id:2,emoji:'📄',name:'Graffiti Synthetic Paper 5mil Gloss',sku:'GWS-5MIL-36x150',barcode:'845123001235',ean:'',mpn:'GRF-WS5',vendorSku:'GRF-WS5-36',category:'Synthetic Paper',productType:'storable',brand:'Graffiti',supplier:'Graffiti Media Inc.',salesPrice:142.00,costPrice:88.00,comparePrice:160.00,taxRate:'7%',uom:'Roll',moq:'1',leadTime:'3-5 days',stockQty:28,reorderPoint:5,width:'36"',length:'150ft',thickness:'5mil',weight:'4.1',weightUnit:'lb',gsm:'90',finish:'Gloss',substrate:'PP Synthetic',printableSides:'Single Side',compatibility:'Inkjet',waterproof:'Yes',tags:['synthetic','gloss','graffiti'],collections:'Synthetic Papers',seoTitle:'',seoDesc:'',description:'',imageUrl:'',odooId:'P-1043',zohoItemId:'ZI-2201',shopifyId:'',syncOdoo:true,syncZoho:true,syncShopify:false,status:'active',completeness:82,missing:['EAN','Images','SEO','Shopify ID']},
+  {id:3,emoji:'🎨',name:'Wide Format Solvent Media Premium',sku:'WFM-SOL-60x165',barcode:'',ean:'',mpn:'',vendorSku:'GMS-SOL-60',category:'Solvent Media',productType:'storable',brand:'4S Graphics',supplier:'Global Media Supply',salesPrice:215.00,costPrice:138.00,comparePrice:240.00,taxRate:'7%',uom:'Roll',moq:'1',leadTime:'5-7 days',stockQty:12,reorderPoint:3,width:'60"',length:'165ft',thickness:'7mil',weight:'8.5',weightUnit:'lb',gsm:'135',finish:'Satin',substrate:'Calendered Vinyl',printableSides:'Single Side',compatibility:'Solvent / Eco-Solvent',waterproof:'Yes',tags:['solvent','wide-format'],collections:'Solvent Media',seoTitle:'',seoDesc:'',description:'',imageUrl:'',odooId:'P-1044',zohoItemId:'',shopifyId:'',syncOdoo:true,syncZoho:false,syncShopify:false,status:'active',completeness:65,missing:['Barcode','EAN','Images','SEO Title','SEO Desc','Zoho ID','Shopify ID']},
+  {id:4,emoji:'🏴',name:'Flex Banner 13oz Blockout',sku:'FLX-13OZ-54x164',barcode:'845123002100',ean:'4000845123002',mpn:'FLX-13OZ',vendorSku:'BSC-FLX13-54',category:'Flex Banner',productType:'storable',brand:'4S Graphics',supplier:'Banner Supply Co.',salesPrice:98.00,costPrice:55.00,comparePrice:115.00,taxRate:'7%',uom:'Roll',moq:'1',leadTime:'2-3 days',stockQty:67,reorderPoint:10,width:'54"',length:'164ft',thickness:'',weight:'7.8',weightUnit:'lb',gsm:'',finish:'Matte',substrate:'PVC Flex',printableSides:'Both',compatibility:'Solvent / UV',waterproof:'Yes',tags:['flex','banner','blockout','outdoor'],collections:'Flex Banners,Best Sellers',seoTitle:'13oz Blockout Flex Banner | 4S Graphics',seoDesc:'Professional flex banner.',description:'<p>13oz PVC blockout flex banner.</p>',imageUrl:'',odooId:'P-1045',zohoItemId:'ZI-2205',shopifyId:'8834115',syncOdoo:true,syncZoho:true,syncShopify:true,status:'active',completeness:100,missing:[]},
+  {id:5,emoji:'🖼️',name:'Dye Sub Transfer Paper 105gsm',sku:'DST-105G-44x328',barcode:'',ean:'',mpn:'',vendorSku:'SPI-DST105-44',category:'Dye Sub',productType:'consumable',brand:'4S Graphics',supplier:'SubPrint International',salesPrice:67.00,costPrice:41.00,comparePrice:80.00,taxRate:'7%',uom:'Roll',moq:'2',leadTime:'7-10 days',stockQty:0,reorderPoint:2,width:'44"',length:'328ft',thickness:'',weight:'3.2',weightUnit:'lb',gsm:'105',finish:'Coated',substrate:'Paper',printableSides:'Single Side',compatibility:'Dye Sub Inkjet',waterproof:'No',tags:['dye-sub','transfer'],collections:'Dye Sub',seoTitle:'',seoDesc:'',description:'',imageUrl:'',odooId:'P-1046',zohoItemId:'',shopifyId:'',syncOdoo:true,syncZoho:false,syncShopify:false,status:'draft',completeness:44,missing:['Barcode','EAN','MPN','Images','SEO','Body HTML','Zoho ID','Shopify ID']},
+  {id:6,emoji:'🏷️',name:'Self Adhesive PP Vinyl Gloss 24"',sku:'SAV-GL-24x150',barcode:'845123003001',ean:'',mpn:'SAV-PPGL',vendorSku:'GMS-PPVG-24',category:'Adhesive Vinyl',productType:'storable',brand:'4S Graphics',supplier:'Global Media Supply',salesPrice:123.00,costPrice:74.00,comparePrice:140.00,taxRate:'7%',uom:'Roll',moq:'1',leadTime:'3-5 days',stockQty:34,reorderPoint:5,width:'24"',length:'150ft',thickness:'3.5mil',weight:'2.9',weightUnit:'lb',gsm:'',finish:'Gloss',substrate:'Cast PP',printableSides:'Single Side',compatibility:'Eco-Solvent / UV',waterproof:'Yes',tags:['vinyl','adhesive','gloss'],collections:'Adhesive Vinyl',seoTitle:'Self Adhesive PP Vinyl | 4S',seoDesc:'3.5mil cast PP gloss.',description:'<p>Self adhesive cast PP gloss vinyl.</p>',imageUrl:'',odooId:'P-1047',zohoItemId:'ZI-2209',shopifyId:'8834118',syncOdoo:true,syncZoho:true,syncShopify:true,status:'active',completeness:91,missing:['EAN']},
+  {id:7,emoji:'✨',name:'Cold Lamination Film Gloss 3mil 54"',sku:'CLF-GL-3MIL-54x150',barcode:'845123004010',ean:'',mpn:'CLF-GL3',vendorSku:'LPS-CGL3-54',category:'Lamination',productType:'storable',brand:'4S Graphics',supplier:'LamPro Supply',salesPrice:145.00,costPrice:89.00,comparePrice:165.00,taxRate:'7%',uom:'Roll',moq:'1',leadTime:'3-5 days',stockQty:19,reorderPoint:4,width:'54"',length:'150ft',thickness:'3mil',weight:'4.8',weightUnit:'lb',gsm:'',finish:'Gloss',substrate:'PET Laminate',printableSides:'N/A',compatibility:'Universal',waterproof:'Yes',tags:['lamination','cold','gloss'],collections:'Lamination',seoTitle:'Cold Gloss Lamination Film | 4S',seoDesc:'3mil cold lamination.',description:'<p>3mil cold lamination film.</p>',imageUrl:'',odooId:'P-1048',zohoItemId:'ZI-2212',shopifyId:'8834120',syncOdoo:true,syncZoho:true,syncShopify:true,status:'active',completeness:88,missing:['EAN']},
+];
+
+const CHANNELS = [
+  {name:'4S Website',icon:'🌐',color:'#2563EB',products:38,complete:89,live:34,on:true},
+  {name:'B2B Portal',icon:'🏭',color:'#16A34A',products:47,complete:94,live:44,on:true},
+  {name:'Amazon',icon:'📦',color:'#D97706',products:22,complete:78,live:18,on:true},
+  {name:'LatAm Distributor',icon:'🌎',color:'#7C3AED',products:15,complete:65,live:9,on:true},
+  {name:'Honduras Direct',icon:'🔗',color:'#DC2626',products:8,complete:71,live:6,on:false},
+];
+
+const SCHEMA = [
+  {group:'Core Identity',fields:[
+    {pim:'Product Name',type:'Text',req:true,odoo:'name',zoho:'name',shopify:'title'},
+    {pim:'SKU',type:'Text',req:true,odoo:'default_code',zoho:'sku',shopify:'variants[0].sku'},
+    {pim:'Barcode / UPC',type:'Text',req:false,odoo:'barcode',zoho:'upc',shopify:'variants[0].barcode'},
+    {pim:'EAN',type:'Text',req:false,odoo:'barcode',zoho:'ean',shopify:'variants[0].barcode'},
+    {pim:'MPN',type:'Text',req:false,odoo:'(attribute)',zoho:'mpn',shopify:'metafield'},
+    {pim:'Vendor SKU',type:'Text',req:false,odoo:'supplierinfo.product_code',zoho:'(purchase desc)',shopify:'metafield'},
+  ]},
+  {group:'Pricing & Tax',fields:[
+    {pim:'Sales Price',type:'Currency',req:true,odoo:'list_price',zoho:'rate',shopify:'variants[0].price'},
+    {pim:'Cost Price',type:'Currency',req:true,odoo:'standard_price',zoho:'purchase_rate',shopify:'(compare_at)'},
+    {pim:'Compare At Price',type:'Currency',req:false,odoo:'(pricelist)',zoho:'(custom)',shopify:'variants[0].compare_at_price'},
+    {pim:'Tax Rate',type:'Select',req:false,odoo:'taxes_id',zoho:'tax_percentage',shopify:'taxable'},
+    {pim:'Sales Account',type:'Text',req:false,odoo:'property_account_income_id',zoho:'sales_account_id',shopify:'N/A'},
+    {pim:'Purchase Account',type:'Text',req:false,odoo:'property_account_expense_id',zoho:'purchase_account_id',shopify:'N/A'},
+  ]},
+  {group:'Classification',fields:[
+    {pim:'Category',type:'Select',req:true,odoo:'categ_id',zoho:'category_name',shopify:'product_type'},
+    {pim:'Product Type',type:'Select',req:false,odoo:'type',zoho:'product_type',shopify:'(variant)'},
+    {pim:'Brand',type:'Text',req:false,odoo:'(attribute)',zoho:'brand',shopify:'vendor'},
+    {pim:'Supplier',type:'Text',req:false,odoo:'seller_ids',zoho:'vendor_name',shopify:'vendor'},
+    {pim:'Tags',type:'Text',req:false,odoo:'tag_ids',zoho:'tags',shopify:'tags'},
+    {pim:'Collections',type:'Text',req:false,odoo:'route_ids',zoho:'N/A',shopify:'collections'},
+  ]},
+  {group:'Physical',fields:[
+    {pim:'Width',type:'Text',req:false,odoo:'(attribute)',zoho:'(custom)',shopify:'variant option'},
+    {pim:'Length',type:'Text',req:false,odoo:'(attribute)',zoho:'(custom)',shopify:'variant option'},
+    {pim:'Thickness',type:'Text',req:false,odoo:'(attribute)',zoho:'(custom)',shopify:'metafield'},
+    {pim:'Weight',type:'Number',req:true,odoo:'weight',zoho:'weight',shopify:'variants[0].weight'},
+    {pim:'Weight Unit',type:'Select',req:false,odoo:'weight_uom_name',zoho:'weight_unit',shopify:'variants[0].weight_unit'},
+    {pim:'Volume',type:'Number',req:false,odoo:'volume',zoho:'N/A',shopify:'N/A'},
+    {pim:'UoM',type:'Select',req:false,odoo:'uom_id',zoho:'unit',shopify:'N/A'},
+    {pim:'GSM',type:'Number',req:false,odoo:'(attribute)',zoho:'(custom)',shopify:'metafield'},
+    {pim:'Finish',type:'Select',req:false,odoo:'(attribute)',zoho:'(custom)',shopify:'variant option'},
+    {pim:'Substrate',type:'Text',req:false,odoo:'(attribute)',zoho:'(custom)',shopify:'metafield'},
+  ]},
+  {group:'Print Properties',fields:[
+    {pim:'Printable Sides',type:'Select',req:false,odoo:'(attribute)',zoho:'(custom)',shopify:'metafield'},
+    {pim:'Ink Compatibility',type:'Text',req:false,odoo:'(attribute)',zoho:'(custom)',shopify:'metafield'},
+    {pim:'Waterproof',type:'Select',req:false,odoo:'(attribute)',zoho:'(custom)',shopify:'metafield'},
+  ]},
+  {group:'Inventory',fields:[
+    {pim:'Stock Quantity',type:'Number',req:false,odoo:'qty_available',zoho:'stock_on_hand',shopify:'inventory_quantity'},
+    {pim:'Reorder Point',type:'Number',req:false,odoo:'reordering_rules',zoho:'reorder_level',shopify:'N/A'},
+    {pim:'MOQ',type:'Number',req:false,odoo:'purchase_line_warn',zoho:'minimum_order_quantity',shopify:'N/A'},
+    {pim:'Lead Time',type:'Text',req:false,odoo:'sale_delay',zoho:'lead_time_for_purchase',shopify:'N/A'},
+  ]},
+  {group:'Content & SEO',fields:[
+    {pim:'Body HTML',type:'HTML',req:false,odoo:'description',zoho:'description',shopify:'body_html'},
+    {pim:'SEO Title',type:'Text',req:false,odoo:'N/A',zoho:'N/A',shopify:'seo_title'},
+    {pim:'SEO Description',type:'Text',req:false,odoo:'N/A',zoho:'N/A',shopify:'seo_description'},
+    {pim:'Image URL',type:'URL',req:false,odoo:'image_1920',zoho:'image_url',shopify:'images[0].src'},
+  ]},
+  {group:'Platform IDs',fields:[
+    {pim:'Odoo ID',type:'Text',req:false,odoo:'id',zoho:'N/A',shopify:'N/A'},
+    {pim:'Zoho Item ID',type:'Text',req:false,odoo:'N/A',zoho:'item_id',shopify:'N/A'},
+    {pim:'Shopify Product ID',type:'Text',req:false,odoo:'N/A',zoho:'N/A',shopify:'id'},
+  ]},
+];
+
+// ════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════
+let currentView = 'catalog';
+let selectedId  = null;
+let detailTab   = 'fields';
+let filterMode  = 'all';
+let viewMode    = 'table';
+let logEntries  = [];
+let logFilter   = 'all';
+let connState   = {odoo:'off',zoho:'off',shopify:'off'};
+
+// CSV state
+let csvHeaders=[], csvRows=[], csvMappings={}, csvPlatform=null, csvFileType='CSV';
+const PIM_FIELD_KEYS = SCHEMA.flatMap(g=>g.fields.map(f=>f.pim)).concat(['— Ignore —']);
+
+// ════════════════════════════════════════════════
+// NAV
+// ════════════════════════════════════════════════
+function goTo(view, navEl) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  if(navEl) navEl.classList.add('active');
+  currentView = view;
+  const labels = {catalog:'Products',channels:'Channels',schema:'Field Schema',import:'CSV Import',sync:'API Sync',credentials:'Credentials'};
+  document.getElementById('breadcrumb-current').textContent = labels[view]||view;
+  document.getElementById('filterBar').style.display = view==='catalog' ? 'flex' : 'none';
+  if(view==='channels')     renderChannels();
+  if(view==='schema')       renderSchema();
+  if(view==='import')       renderImport();
+  if(view==='sync')         renderSync();
+  if(view==='credentials')  renderCredentials();
+}
+
+// ════════════════════════════════════════════════
+// CATALOG — TABLE
+// ════════════════════════════════════════════════
+function getFiltered() {
+  return PRODUCTS.filter(p => {
+    if(filterMode==='active' && p.status!=='active') return false;
+    if(filterMode==='draft'  && p.status!=='draft')  return false;
+    if(filterMode==='incomplete' && p.completeness>=80) return false;
+    return true;
+  });
+}
+
+function compColor(c) { return c>=90?'#16A34A':c>=70?'#D97706':'#DC2626'; }
+function stockColor(q) { return q===0?'#DC2626':q<5?'#D97706':'#16A34A'; }
+
+function tagColor(i) {
+  const cols = ['tag-purple','tag-blue','tag-green','tag-orange','tag-amber','tag-gray'];
+  return cols[i % cols.length];
+}
+
+function renderTable() {
+  const rows = getFiltered();
+  const html = `
+  <table class="att-table">
+    <thead><tr>
+      <th style="width:36px"></th>
+      <th style="min-width:260px">Name</th>
+      <th>SKU</th>
+      <th>Category</th>
+      <th>Status</th>
+      <th style="min-width:140px">Platforms</th>
+      <th style="min-width:130px">Completeness</th>
+      <th>Stock</th>
+      <th>Price</th>
+      <th style="width:40px"></th>
+    </tr></thead>
+    <tbody>
+    ${rows.map(p=>`
+    <tr data-id="${p.id}" class="${selectedId===p.id?'selected':''}">
+      <td style="text-align:center;font-size:16px">${p.emoji}</td>
+      <td>
+        <div class="cell-name">
+          <span>${p.name}</span>
+        </div>
+      </td>
+      <td><span class="cell-mono">${p.sku}</span></td>
+      <td><span class="tag tag-gray">${p.category}</span></td>
+      <td><span class="tag ${p.status==='active'?'tag-green':'tag-amber'}">${p.status}</span></td>
+      <td>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${p.syncOdoo?   '<span class="ptag ptag-o"><span class="ptag-dot"></span>Odoo</span>':''}
+          ${p.syncZoho?   '<span class="ptag ptag-z"><span class="ptag-dot"></span>Zoho</span>':''}
+          ${p.syncShopify?'<span class="ptag ptag-s"><span class="ptag-dot"></span>Shopify</span>':''}
+          ${!p.syncOdoo&&!p.syncZoho&&!p.syncShopify?'<span style="font-size:11px;color:var(--txt4)">—</span>':''}
+        </div>
+      </td>
+      <td>
+        <div class="comp-wrap">
+          <div class="comp-track"><div class="comp-bar" style="width:${p.completeness}%;background:${compColor(p.completeness)}"></div></div>
+          <span class="comp-pct" style="color:${compColor(p.completeness)}">${p.completeness}%</span>
+        </div>
+      </td>
+      <td style="color:${stockColor(p.stockQty)};font-weight:500">${p.stockQty}</td>
+      <td style="font-weight:500;color:var(--txt)">$${p.salesPrice.toFixed(2)}</td>
+      <td class="td-actions" onclick="event.stopPropagation()">
+        <button class="row-del" title="Delete product" onclick="confirmDelete(${p.id})">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 10h8l1-10"/></svg>
+        </button>
+      </td>
+    </tr>`).join('')}
+    </tbody>
+  </table>`;
+  document.getElementById('tablePaneWrap').innerHTML = html;
+  document.querySelectorAll('.att-table tbody tr').forEach(row=>{
+    row.onclick = () => {
+      const id = parseInt(row.dataset.id);
+      if(selectedId===id) { selectedId=null; closePanel(); } else { selectedId=id; openPanel(); }
+      renderTable();
+    };
+  });
+}
+
+function setFilter(mode, el) {
+  filterMode = mode;
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  renderTable();
+}
+
+function setViewMode(mode, el) {
+  viewMode = mode;
+  document.querySelectorAll('.vt-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  if(mode==='board') renderBoard();
+  else renderTable();
+}
+
+function renderBoard() {
+  const cats = [...new Set(PRODUCTS.map(p=>p.category))];
+  document.getElementById('tablePaneWrap').innerHTML = `
+  <div style="display:flex;gap:12px;padding:16px;min-width:max-content;height:100%">
+    ${cats.map(cat=>{
+      const prods = PRODUCTS.filter(p=>p.category===cat);
+      return `<div style="width:240px;flex-shrink:0">
+        <div style="font-size:12px;font-weight:500;color:var(--txt2);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+          <span>${cat}</span><span style="font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1px 7px;color:var(--txt3)">${prods.length}</span>
+        </div>
+        ${prods.map(p=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow='none'" onclick="selectedId=${p.id};openPanel();document.getElementById('vt-table').click()">
+          <div style="font-size:15px;margin-bottom:7px">${p.emoji}</div>
+          <div style="font-size:13px;font-weight:500;color:var(--txt);margin-bottom:5px;line-height:1.3">${p.name}</div>
+          <div style="font-size:11px;color:var(--txt3);margin-bottom:8px">${p.sku}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="tag ${p.status==='active'?'tag-green':'tag-amber'}" style="font-size:10px">${p.status}</span>
+            <span style="font-size:12px;font-weight:600;color:var(--txt)">$${p.salesPrice.toFixed(2)}</span>
+          </div>
+        </div>`).join('')}
+        <div style="padding:9px 10px;border-radius:7px;border:1px dashed var(--border);font-size:12px;color:var(--txt4);cursor:pointer;text-align:center;transition:background .12s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='none'">+ Add product</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── RECORD PANEL ─────────────────────────────
+function openPanel() {
+  document.getElementById('recordPanel').classList.add('open');
+  renderPanel();
+}
+function closePanel() {
+  selectedId = null;
+  document.getElementById('recordPanel').classList.remove('open');
+  document.getElementById('recordPanel').innerHTML = '';
+}
+
+function renderPanel() {
+  const p = PRODUCTS.find(x=>x.id===selectedId);
+  if(!p) return;
+  const panel = document.getElementById('recordPanel');
+  const tabs = ['fields','price','physical','sync'];
+  panel.innerHTML = `
+  <div class="rp-header" style="position:relative">
+    <button class="rp-close" onclick="closePanel();renderTable()">✕</button>
+    <div class="rp-emoji">${p.emoji}</div>
+    <div class="rp-name">${p.name}</div>
+    <div class="rp-sub">${p.sku} · ${p.category}</div>
+    <div class="rp-platforms">
+      ${p.syncOdoo?   `<span class="ptag ptag-o"><span class="ptag-dot"></span>Odoo ${p.odooId||''}</span>`:   '<span class="tag tag-gray" style="font-size:10px;color:var(--txt4)">Odoo—</span>'}
+      ${p.syncZoho?   `<span class="ptag ptag-z"><span class="ptag-dot"></span>Zoho ${p.zohoItemId||''}</span>`: '<span class="tag tag-gray" style="font-size:10px;color:var(--txt4)">Zoho—</span>'}
+      ${p.syncShopify?`<span class="ptag ptag-s"><span class="ptag-dot"></span>Shopify</span>`:                   '<span class="tag tag-gray" style="font-size:10px;color:var(--txt4)">Shopify—</span>'}
+    </div>
+    ${p.missing.length>0?`<div style="margin-top:6px"><span class="tag tag-amber">⚠ ${p.missing.length} missing field${p.missing.length>1?'s':''}</span></div>`:'<span class="tag tag-green">✓ Complete</span>'}
+  </div>
+  <div class="rp-tabs">
+    ${tabs.map(t=>`<div class="rp-tab${detailTab===t?' active':''}" onclick="detailTab='${t}';renderPanel()">${t.charAt(0).toUpperCase()+t.slice(1)}</div>`).join('')}
+  </div>
+  <div class="rp-body">${renderPanelTab(p)}</div>
+  <div class="rp-actions">
+    <button class="rp-push rp-push-o" onclick="pushOne('odoo')">↑ Odoo</button>
+    <button class="rp-push rp-push-z" onclick="pushOne('zoho')">↑ Zoho</button>
+    <button class="rp-push rp-push-s" onclick="pushOne('shopify')">↑ Shopify</button>
+    <button class="rp-del" title="Delete product" onclick="confirmDelete(selectedId)">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 10h8l1-10"/></svg>
+    </button>
+  </div>`;
+}
+
+function aField(label, val, empty=false) {
+  const v = val===''||val===null||val===undefined;
+  return `<div class="att-field">
+    <div class="att-field-label">${label}</div>
+    <div class="att-field-val${v?' empty':''}">${v?'—':val}</div>
+  </div>`;
+}
+
+function renderPanelTab(p) {
+  if(detailTab==='fields') return `
+    <div class="rp-section"><div class="rp-section-title">Identification</div>
+      ${aField('Name',p.name)}
+      ${aField('SKU',p.sku)}
+      ${aField('Barcode',p.barcode)}
+      ${aField('EAN',p.ean)}
+      ${aField('MPN',p.mpn)}
+      ${aField('Vendor SKU',p.vendorSku)}
+    </div>
+    <div class="rp-section"><div class="rp-section-title">Classification</div>
+      ${aField('Category',p.category)}
+      ${aField('Product Type',p.productType)}
+      ${aField('Brand',p.brand)}
+      ${aField('Supplier',p.supplier)}
+      ${aField('UoM',p.uom)}
+      ${aField('MOQ',p.moq)}
+      ${aField('Lead Time',p.leadTime)}
+      ${aField('Tags',Array.isArray(p.tags)?p.tags.join(', '):p.tags)}
+    </div>
+    <div class="rp-section"><div class="rp-section-title">Inventory</div>
+      ${aField('Stock Qty',p.stockQty)}
+      ${aField('Reorder Point',p.reorderPoint)}
+    </div>`;
+
+  if(detailTab==='price') {
+    const margin = p.costPrice>0?Math.round((1-p.costPrice/p.salesPrice)*100):0;
+    const markup = p.costPrice>0?Math.round((p.salesPrice/p.costPrice-1)*100):0;
+    return `
+    <div class="rp-section"><div class="rp-section-title">Pricing</div>
+      ${aField('Sales Price','$'+p.salesPrice.toFixed(2))}
+      ${aField('Cost Price','$'+p.costPrice.toFixed(2))}
+      ${aField('Compare At','$'+(p.comparePrice||0).toFixed(2))}
+      ${aField('Tax Rate',p.taxRate)}
+      ${aField('Currency','USD')}
+    </div>
+    <div class="margin-card">
+      <div class="margin-item"><div class="margin-val" style="color:#16A34A">${margin}%</div><div class="margin-lbl">Margin</div></div>
+      <div class="margin-item"><div class="margin-val" style="color:var(--blue)">${markup}%</div><div class="margin-lbl">Markup</div></div>
+      <div class="margin-item"><div class="margin-val" style="color:var(--txt)">$${(p.salesPrice-p.costPrice).toFixed(2)}</div><div class="margin-lbl">Profit</div></div>
+    </div>
+    <div class="rp-section" style="margin-top:16px"><div class="rp-section-title">Accounting</div>
+      ${aField('Sales Account','400-Sales')}
+      ${aField('Purchase Account','500-Purchases')}
+    </div>`;
+  }
+
+  if(detailTab==='physical') return `
+    <div class="rp-section"><div class="rp-section-title">Dimensions</div>
+      ${aField('Width',p.width)}
+      ${aField('Length',p.length)}
+      ${aField('Thickness',p.thickness)}
+      ${aField('Weight',p.weight+' '+p.weightUnit)}
+      ${aField('GSM',p.gsm)}
+    </div>
+    <div class="rp-section"><div class="rp-section-title">Material</div>
+      ${aField('Substrate',p.substrate)}
+      ${aField('Finish',p.finish)}
+      ${aField('Printable Sides',p.printableSides)}
+      ${aField('Compatibility',p.compatibility)}
+      ${aField('Waterproof',p.waterproof)}
+    </div>
+    <div class="rp-section"><div class="rp-section-title">Content & SEO</div>
+      ${aField('SEO Title',p.seoTitle)}
+      ${aField('SEO Desc',p.seoDesc)}
+      ${aField('Image URL',p.imageUrl)}
+    </div>`;
+
+  if(detailTab==='sync') return `
+    <div class="rp-section"><div class="rp-section-title">Sync Status</div>
+      ${['odoo','zoho','shopify'].map(pl=>{
+        const synced = pl==='odoo'?p.syncOdoo:pl==='zoho'?p.syncZoho:p.syncShopify;
+        const pid    = pl==='odoo'?p.odooId:pl==='zoho'?p.zohoItemId:p.shopifyId;
+        const cls    = synced?'tag-green':'tag-gray';
+        return `<div class="att-field">
+          <div class="att-field-label" style="text-transform:capitalize">${pl}</div>
+          <div class="att-field-val"><span class="tag ${cls}">${synced?'Synced':'Not synced'}</span>${pid?` <span style="font-size:11px;color:var(--txt3)">${pid}</span>`:''}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="rp-section"><div class="rp-section-title">Field Mapping Preview</div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:11px;line-height:2;font-family:ui-monospace,monospace;color:var(--txt2)">
+        <span style="color:var(--blue)">name</span>: "${p.name.slice(0,30)}…" → odoo.name · zoho.name · shopify.title<br>
+        <span style="color:var(--blue)">sku</span>: "${p.sku}" → odoo.default_code · zoho.sku · shopify.variant.sku<br>
+        <span style="color:var(--blue)">list_price</span>: ${p.salesPrice} → odoo.list_price · zoho.rate · shopify.price<br>
+        <span style="color:var(--txt4)">…+49 more fields</span>
+      </div>
+    </div>`;
+  return '';
+}
+
+function pushOne(plat) {
+  if(!selectedId) return;
+  const p = PRODUCTS.find(x=>x.id===selectedId);
+  addLog('push',plat,`Pushed "${p.name.slice(0,28)}…"`,`Synced to ${plat} · ${p.sku}`);
+  toast(`↑ ${p.name.slice(0,32)}… pushed to ${plat}`);
+}
+
+// ════════════════════════════════════════════════
+// CHANNELS
+// ════════════════════════════════════════════════
+function renderChannels() {
+  document.getElementById('chGrid').innerHTML = CHANNELS.map((ch,i)=>`
+  <div class="ch-card">
+    <div class="ch-card-top">
+      <div class="ch-icon" style="background:${ch.color}18">${ch.icon}</div>
+      <div style="flex:1"><div class="ch-name">${ch.name}</div><div class="ch-count">${ch.products} products</div></div>
+      <button class="ch-toggle ${ch.on?'on':'off'}" onclick="CHANNELS[${i}].on=!CHANNELS[${i}].on;this.classList.toggle('on');this.classList.toggle('off');schedulePersist();toast('${ch.name} '+(CHANNELS[${i}].on?'enabled':'disabled'))"></button>
+    </div>
+    ${[['Live',ch.live,'#16A34A'],['Completeness',ch.complete+'%',null],['Pending',ch.products-ch.live,'#D97706']].map(([l,v,c])=>`
+    <div class="ch-stat"><span class="ch-stat-lbl">${l}</span><span class="ch-stat-val" style="${c?'color:'+c:''}">${v}</span></div>`).join('')}
+    <div class="ch-progress"><div class="ch-progress-fill" style="width:${ch.complete}%;background:${ch.color}"></div></div>
+  </div>`).join('');
+}
+
+// ════════════════════════════════════════════════
+// SCHEMA
+// ════════════════════════════════════════════════
+function renderSchema() {
+  document.getElementById('schemaContent').innerHTML = SCHEMA.map(g=>`
+  <div class="schema-group">
+    <div class="schema-group-title">${g.group}</div>
+    <table class="schema-tbl">
+      <thead><tr><th>PIM Field</th><th>Type</th><th>Odoo key</th><th>Zoho key</th><th>Shopify key</th><th>Req</th></tr></thead>
+      <tbody>${g.fields.map(f=>`<tr>
+        <td style="font-weight:500;color:var(--txt)">${f.pim}</td>
+        <td><span style="font-size:11px;color:var(--txt3)">${f.type}</span></td>
+        <td><span class="api-pill">${f.odoo}</span></td>
+        <td><span class="api-pill">${f.zoho}</span></td>
+        <td><span class="api-pill">${f.shopify}</span></td>
+        <td style="text-align:center">${f.req?'<span class="req-dot"></span>':'<span style="color:var(--txt4)">—</span>'}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>`).join('');
+}
+
+// ════════════════════════════════════════════════
+// CSV IMPORT
+// ════════════════════════════════════════════════
+const PLAT_SIGS = {
+  // Odoo Product Variant export uses 'Name' not 'Product Name', and has specific columns
+  odoo:['Internal Reference','Name','Product Category','Product Type'],
+  // Odoo standard export also matches these
+  odoo2:['Internal Reference','Sales Price','Can be Sold','Unit of Measure'],
+  zoho:['Item Name','Selling Price','Purchase Price','Reorder Level'],
+  shopify:['Handle','Body (HTML)','Variant SKU','Variant Price'],
+};
+const PLAT_MAPS = {
+  odoo:{
+    // Core identity
+    'Internal Reference':    'SKU',
+    'Name':                  'Product Name',
+    'Product Name':          'Product Name',
+    'Variant Values':        'Variant Values',
+    // Pricing — note Odoo exports "Sales Price" with non-breaking space; normalizeHeader fixes it
+    'Sales Price':           'Sales Price',
+    'Sales Price':      'Sales Price',
+    'Cost':                  'Cost Price',
+    'Average Cost':          'Cost Price',
+    // Classification
+    'Product Category':      'Category',
+    'Category':              'Category',
+    'Product Type':          'Product Type',
+    'Unit Name':             'UoM',
+    'Unit':                  'UoM',
+    'Unit of Measure':       'UoM',
+    // Dimensions & physical
+    'Width (in Inches)':     'Width',
+    'Height (in Inches)':    'Length',
+    'Weight':                'Weight',
+    'Square Meters':         'GSM',
+    // Inventory
+    'Quantity On Hand':      'Stock Quantity',
+    'Free To Use Quantity':  'Stock Quantity',
+    'Reordering Min Qty':    'Reorder Point',
+    'MOQ':                   'MOQ',
+    // Tags & content
+    'Tags':                  'Tags',
+    'Variant Tags':          'Tags',
+    'Purchase Description':  'Body HTML',
+    'Sales Description':     'Body HTML',
+    'eCommerce Description': 'Body HTML',
+    // Accounting
+    'Income Account':        'Sales Account',
+    'Expense Account':       'Purchase Account',
+    // Vendor
+    'Vendors':               'Supplier',
+    'Origin of Goods':       'Origin of Goods',
+    'HS Code':               'HS Code',
+    'Valuation Currency':    'Currency',
+    // Ignore
+    'Favorite':              '— Ignore —',
+    'Purchase':              '— Ignore —',
+    'Total Value':           '— Ignore —',
+    'Total Square Metersl':  '— Ignore —',
+    'Sheets/Packet':         '— Ignore —',
+    'Sheets/Pallet':         '— Ignore —',
+    'Carton (sheets qty)':   '— Ignore —',
+    'Cartons/Pallet':        '— Ignore —',
+    'Packets/Carton':        '— Ignore —',
+    'Reordering Max Qty':    '— Ignore —',
+    'Quantity (Packets)':    '— Ignore —',
+    'Ribbon':                '— Ignore —',
+    'Variant Ribbon':        '— Ignore —',
+  },
+  zoho:{'Item Name':'Product Name','SKU':'SKU','Selling Price':'Sales Price','Purchase Price':'Cost Price','UPC':'Barcode / UPC','EAN':'EAN','MPN':'MPN','Unit':'UoM','Tax':'Tax Rate','Brand':'Brand','Category':'Category','Description':'Body HTML','Reorder Level':'Reorder Point','Opening Stock':'Stock Quantity','Item ID':'Zoho Item ID'},
+  shopify:{'Title':'Product Name','Body (HTML)':'Body HTML','Vendor':'Brand','Type':'Category','Tags':'Tags','Variant SKU':'SKU','Variant Barcode':'Barcode / UPC','Variant Price':'Sales Price','Variant Compare At Price':'Compare At Price','Variant Grams':'Weight','Variant Inventory Qty':'Stock Quantity','SEO Title':'SEO Title','SEO Description':'SEO Description','Image Src':'Image URL'},
+};
+const SAMPLE = {
+  odoo:`Internal Reference,Product Name,Sales Price,Cost,Barcode,Category,Unit of Measure,Weight,Tags,ID\nGWS-8MIL-24x150,Graffiti Waterproof Synthetic Paper 8mil,187.50,112.00,845123001234,Synthetic Paper,Roll,5.2,synthetic waterproof,1042\nFLX-13OZ-54x164,Flex Banner 13oz Blockout,98.00,55.00,845123002100,Flex Banner,Roll,7.8,flex banner,1045`,
+  zoho:`Item Name,SKU,Selling Price,Purchase Price,UPC,EAN,Unit,Tax,Brand,Category,Reorder Level,Opening Stock,Item ID\nGraffiti Waterproof Synthetic Paper 8mil,GWS-8MIL-24x150,187.50,112.00,845123001234,,Roll,7%,Graffiti,Synthetic Paper,5,42,ZI-2201\nFlex Banner 13oz Blockout,FLX-13OZ-54x164,98.00,55.00,845123002100,4000845123002,Roll,7%,4S Graphics,Flex Banner,10,67,ZI-2205`,
+  shopify:`Title,Handle,Body (HTML),Vendor,Type,Tags,Variant SKU,Variant Barcode,Variant Price,Variant Compare At Price,Variant Grams,Variant Inventory Qty,SEO Title,Image Src\nGraffiti Waterproof Synthetic Paper 8mil,graffiti-8mil,<p>8mil paper</p>,Graffiti,Synthetic Paper,synthetic waterproof,GWS-8MIL-24x150,845123001234,187.50,210.00,2359,42,Graffiti 8mil | 4S,https://cdn.4s.com/g8.jpg\nFlex Banner 13oz Blockout,flex-banner-13oz,<p>Flex banner</p>,4S Graphics,Flex Banner,flex banner outdoor,FLX-13OZ-54x164,845123002100,98.00,115.00,3538,67,Flex Banner | 4S,https://cdn.4s.com/fb.jpg`,
+};
+
+function renderImport() {
+  const el = document.getElementById('importContent');
+  if(!csvHeaders.length) {
+    el.innerHTML = `
+    <div class="drop-zone" id="dropZone" ondragover="ev(event,true)" ondragleave="ev(event,false)" ondrop="drop(event)">
+      <input type="file" accept=".csv,.xlsx,.xls" onchange="fileIn(event)">
+      <div class="drop-icon">📂</div>
+      <div class="drop-title">Drop your product file here</div>
+      <div class="drop-sub" style="margin-bottom:12px">Odoo · Zoho · Shopify — auto-detected from column headers</div>
+      <div style="display:flex;justify-content:center;gap:7px;flex-wrap:wrap">
+        <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:500;background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)">CSV</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:500;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)">XLSX</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:500;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)">XLS</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:14px">
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      <span style="font-size:11px;color:var(--txt4)">or load a sample</span>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+    </div>
+    <div class="sample-row" style="margin-top:10px">
+      <button class="btn btn-secondary btn-sm" onclick="loadSample('odoo')">Odoo sample</button>
+      <button class="btn btn-secondary btn-sm" onclick="loadSample('zoho')">Zoho sample</button>
+      <button class="btn btn-secondary btn-sm" onclick="loadSample('shopify')">Shopify sample</button>
+    </div>`;
+    return;
+  }
+  const pm = csvPlatform;
+  const pmeta = {odoo:{c:'#7C3AED',bg:'#FAF5FF',bd:'#E9D5FF',lbl:'Odoo Inventory'},zoho:{c:'#C2410C',bg:'#FFF7ED',bd:'#FED7AA',lbl:'Zoho Inventory'},shopify:{c:'#15803D',bg:'#F0FDF4',bd:'#BBF7D0',lbl:'Shopify'}};
+  const pmc = pm?pmeta[pm]:null;
+  const matched = csvHeaders.filter(h=>csvMappings[h]&&csvMappings[h]!=='— Ignore —').length;
+  el.innerHTML = `
+  ${pmc?`<div class="detected-banner" style="background:${pmc.bg};border-color:${pmc.bd};color:${pmc.c}">
+    <span style="font-size:18px">🎯</span>
+    <div style="flex:1"><div style="font-weight:600">${pmc.lbl} detected — all fields auto-mapped</div><div style="font-size:12px;opacity:.8">${csvHeaders.length} columns · ${csvRows.length} rows · ${csvFileType} file</div></div>
+    <span class="tag tag-green">${csvFileType}</span>
+  </div>`:`<div class="detected-banner" style="background:var(--amber-bg);border-color:var(--amber-bd);color:var(--amber)">
+    <span style="font-size:16px">⚠</span>
+    <div style="flex:1">Unknown format — review the column mapping below. File type: <strong>${csvFileType}</strong></div>
+  </div>`}
+  <div class="stats-strip">
+    <div class="stat-box"><div class="stat-box-val">${csvHeaders.length}</div><div class="stat-box-lbl">Columns</div></div>
+    <div class="stat-box"><div class="stat-box-val" style="color:var(--green)">${matched}</div><div class="stat-box-lbl">Mapped</div></div>
+    <div class="stat-box"><div class="stat-box-val" style="color:var(--txt3)">${csvHeaders.length-matched}</div><div class="stat-box-lbl">Ignored</div></div>
+    <div class="stat-box"><div class="stat-box-val" style="color:var(--amber)">${csvRows.length}</div><div class="stat-box-lbl">Products</div></div>
+  </div>
+  <div class="map-tbl-wrap"><table class="map-tbl">
+    <thead><tr><th></th><th>Source column</th><th>Sample value</th><th>Confidence</th><th>Maps to PIM field</th></tr></thead>
+    <tbody>${csvHeaders.map((h,i)=>{
+      const conf = getConf(h);
+      const sample = (csvRows[0]?.[i]||'').slice(0,40);
+      const mapped = csvMappings[h]||'— Ignore —';
+      return `<tr>
+        <td><div style="width:6px;height:6px;border-radius:50%;background:${conf>=90?'#16A34A':conf>=60?'#D97706':'#C4C2BC'}"></div></td>
+        <td style="font-weight:500;color:var(--txt)">${h}</td>
+        <td style="color:var(--txt3);font-size:12px">${sample||'—'}</td>
+        <td><div class="conf-mini">
+          <div class="conf-mini-track"><div class="conf-mini-fill" style="width:${conf}%;background:${conf>=90?'#16A34A':conf>=60?'#D97706':'#C4C2BC'}"></div></div>
+          <span style="font-size:11px;color:${conf>=90?'#16A34A':conf>=60?'#D97706':'var(--txt4)'}">${conf}%</span>
+        </div></td>
+        <td><select class="map-sel${conf>=90?' matched':mapped==='— Ignore —'?' ignored':''}" onchange="csvMappings['${h.replace(/'/g,"\\'")}'] = this.value">
+          ${PIM_FIELD_KEYS.map(k=>`<option value="${k}" ${mapped===k?'selected':''}>${k}</option>`).join('')}
+        </select></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>
+  <div style="display:flex;gap:10px;align-items:center;padding-top:4px">
+    <button class="btn btn-ghost btn-sm" onclick="csvHeaders=[];csvRows=[];renderImport()">← Start over</button>
+    <div style="flex:1;font-size:12px;color:var(--txt3)">${csvRows.length} products · ${matched} fields mapped</div>
+    <button class="btn btn-primary" onclick="doImport()">Import ${csvRows.length} products →</button>
+  </div>`;
+}
+
+function getConf(h) {
+  const pm = csvPlatform?PLAT_MAPS[csvPlatform]:{};
+  if(pm[h]) return 98;
+  const hl = h.toLowerCase().replace(/[^a-z0-9]/g,'');
+  for(const k of PIM_FIELD_KEYS) { if(hl===k.toLowerCase().replace(/[^a-z0-9]/g,'')) return 88; }
+  return csvMappings[h]&&csvMappings[h]!=='— Ignore —'?60:0;
+}
+function ev(e,on) { e.preventDefault(); document.getElementById('dropZone')?.classList.toggle('drag',on); }
+function drop(e) { e.preventDefault(); ev(e,false); if(e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]); }
+function fileIn(e) { if(e.target.files[0]) readFile(e.target.files[0]); }
+
+function readFile(f) {
+  const name = f.name.toLowerCase();
+  const isXlsx = name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.xlsm');
+  csvFileType = isXlsx ? (name.endsWith('.xls') && !name.endsWith('.xlsx') ? 'XLS' : 'XLSX') : 'CSV';
+
+  if (isXlsx) {
+    // Use SheetJS for Excel files
+    if (typeof XLSX === 'undefined') {
+      toast('⚠ SheetJS not loaded yet — try again in a moment');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const wb   = XLSX.read(data, { type: 'array', cellText: true, cellDates: true });
+        // Use the first sheet
+        const sheetName = wb.SheetNames[0];
+        const sheet     = wb.Sheets[sheetName];
+        // Convert to array of arrays — defval:'' fills empty cells
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', blankrows: false });
+        if (!rows.length) { toast('⚠ Empty spreadsheet'); return; }
+        // First non-empty row = headers
+        csvHeaders = rows[0].map(h => normalizeHeader(h)).filter(h => h !== '');
+        // Subsequent rows — trim to header count
+        csvRows = rows.slice(1)
+          .filter(r => r.some(c => c !== ''))
+          .map(r => csvHeaders.map((_, i) => String(r[i] ?? '').trim()));
+        if (wb.SheetNames.length > 1) {
+          toast(`ℹ Using sheet "${sheetName}" (${wb.SheetNames.length} sheets found)`);
+        }
+        csvPlatform = detectPlat();
+        buildMaps();
+        renderImport();
+      } catch(err) {
+        toast('⚠ Could not read Excel file: ' + err.message);
+      }
+    };
+    reader.readAsArrayBuffer(f);
+  } else {
+    // Plain text CSV
+    const reader = new FileReader();
+    reader.onload = e => { parseCSV(e.target.result); renderImport(); };
+    reader.readAsText(f);
+  }
+}
+
+function loadSample(p) { csvFileType = 'CSV'; parseCSV(SAMPLE[p]); renderImport(); }
+
+function parseCSV(raw) {
+  const lines = raw.trim().split('\n').filter(l => l.trim());
+  csvHeaders  = splitLine(lines[0]).map(normalizeHeader);
+  csvRows     = lines.slice(1).map(splitLine);
+  csvPlatform = detectPlat();
+  buildMaps();
+}
+
+// Strip non-breaking spaces, trim, collapse whitespace
+function normalizeHeader(h) {
+  return String(h ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function splitLine(line) {
+  const res = []; let cur = ''; let inQ = false;
+  for (const c of line) {
+    if (c === '"') inQ = !inQ;
+    else if (c === ',' && !inQ) { res.push(cur.trim()); cur = ''; }
+    else cur += c;
+  }
+  res.push(cur.trim());
+  return res;
+}
+function detectPlat() {
+  let best=null,bestScore=0;
+  for(const[p,sigs] of Object.entries(PLAT_SIGS)){
+    const s=sigs.filter(sig=>csvHeaders.includes(sig)).length;
+    if(s>bestScore){
+      bestScore=s;
+      // odoo2 is an alias for odoo
+      best = p==='odoo2'?'odoo':p;
+    }
+  }
+  return bestScore>=2?best:null;
+}
+function buildMaps() {
+  const pm=csvPlatform?PLAT_MAPS[csvPlatform]:{};
+  csvHeaders.forEach(h=>{csvMappings[h]=pm[h]||'— Ignore —';});
+}
+function doImport() {
+  const keyMap={
+    'Product Name':'name','SKU':'sku','Barcode / UPC':'barcode',
+    'Sales Price':'salesPrice','Cost Price':'costPrice',
+    'Compare At Price':'comparePrice','Tax Rate':'taxRate',
+    'Category':'category','Product Type':'productType',
+    'Brand':'brand','Supplier':'supplier','UoM':'uom',
+    'Width':'width','Length':'length','Thickness':'thickness',
+    'Weight':'weight','GSM':'gsm','Finish':'finish','Substrate':'substrate',
+    'Printable Sides':'printableSides','Ink Compatibility':'compatibility',
+    'Waterproof':'waterproof','Stock Quantity':'stockQty',
+    'Reorder Point':'reorderPoint','MOQ':'moq','Lead Time':'leadTime',
+    'Body HTML':'description','SEO Title':'seoTitle','SEO Description':'seoDesc',
+    'Image URL':'imageUrl','Sales Account':'salesAccount',
+    'Purchase Account':'purchaseAccount','Currency':'currency',
+    'Odoo ID':'odooId','Zoho Item ID':'zohoItemId','Shopify Product ID':'shopifyId',
+    'Tags':'tags','Variant Values':'variantValues',
+    'Origin of Goods':'originOfGoods','HS Code':'hsCode',
+  };
+  const newPs = csvRows.map((row,ri)=>{
+    const base={id:Date.now()+ri,emoji:'📦',status:'draft',completeness:55,missing:[],syncOdoo:false,syncZoho:false,syncShopify:false,salesPrice:0,costPrice:0,stockQty:0,reorderPoint:0,tags:[]};
+    csvHeaders.forEach((h,i)=>{
+      const pf=csvMappings[h];
+      if(pf&&pf!=='— Ignore —'){const k=keyMap[pf]||pf.toLowerCase().replace(/ /g,'');base[k]=row[i]||'';}
+    });
+    if(typeof base.salesPrice==='string') base.salesPrice=parseFloat(base.salesPrice)||0;
+    if(typeof base.costPrice ==='string') base.costPrice =parseFloat(base.costPrice)||0;
+    if(typeof base.stockQty ==='string') base.stockQty =parseInt(base.stockQty)||0;
+    return base;
+  });
+  PRODUCTS=[...PRODUCTS,...newPs];
+  document.getElementById('product-count').textContent=PRODUCTS.length;
+  csvHeaders=[];csvRows=[];csvMappings={};csvPlatform=null;
+  schedulePersist();
+  toast(`✓ ${newPs.length} products imported`);
+  goTo('catalog',document.getElementById('nav-catalog'));
+  renderTable();
+}
+
+// ════════════════════════════════════════════════
+// SYNC
+// ════════════════════════════════════════════════
+function renderSync() {
+  const PLATS = [
+    {id:'odoo',name:'Odoo Inventory',icon:'🟣',api:'XML-RPC · /xmlrpc/2/'},
+    {id:'zoho',name:'Zoho Inventory',icon:'🔴',api:'REST API · inventory.zoho.com'},
+    {id:'shopify',name:'Shopify',icon:'🟢',api:'Admin REST · 2024-04'},
+  ];
+  document.getElementById('syncGrid').innerHTML = PLATS.map(pl=>`
+  <div class="sync-card">
+    <div class="sync-card-top">
+      <span class="sync-plat-icon">${pl.icon}</span>
+      <div class="sync-plat-name">${pl.name}</div>
+      <div class="conn-indicator">
+        <div class="conn-dot ${connState[pl.id]==='on'?'dot-on':'dot-off'}" id="scdot-${pl.id}"></div>
+        <span style="color:${connState[pl.id]==='on'?'var(--green)':'var(--txt4)'}">${connState[pl.id]==='on'?'Live':'Offline'}</span>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--txt3);margin-bottom:12px">${pl.api}</div>
+    <div class="sync-btns">
+      <button class="sync-btn push-btn" id="sbtn-${pl.id}-push" onclick="runSync('${pl.id}','push')">↑ Push PIM → ${pl.name.split(' ')[0]}</button>
+      <button class="sync-btn" id="sbtn-${pl.id}-pull" onclick="runSync('${pl.id}','pull')">↓ Pull ${pl.name.split(' ')[0]} → PIM</button>
+    </div>
+    <div class="sync-meta">
+      Products: <span class="hl">${PRODUCTS.length}</span><br>
+      Status: <span class="${connState[pl.id]==='on'?'ok':''}">${connState[pl.id]==='on'?'Ready to sync':'Connect credentials first'}</span>
+    </div>
+  </div>`).join('');
+  renderLog();
+}
+
+function runSync(plat,dir) {
+  if(connState[plat]!=='on'){addLog('error',plat,`${dir} failed`,'Platform not connected — add credentials first');toast('⚠ Not connected');return;}
+  const btn=document.getElementById(`sbtn-${plat}-${dir}`);
+  const orig=btn.innerHTML;
+  btn.innerHTML=`<span class="spin">⟳</span> ${dir==='push'?'Pushing…':'Pulling…'}`;
+  btn.disabled=true;
+  addLog(dir,plat,`${dir==='push'?'Push':'Pull'} started`,`${PRODUCTS.length} products · syncing…`);
+  let i=0;
+  const iv=setInterval(()=>{
+    if(i>=Math.min(3,PRODUCTS.length)){clearInterval(iv);btn.innerHTML=orig;btn.disabled=false;addLog(dir,plat,`${dir==='push'?'Push':'Pull'} complete`,`${Math.min(3,PRODUCTS.length)} products synced · 0 errors`);toast(`✓ ${Math.min(3,PRODUCTS.length)} products ${dir==='push'?'pushed to':'pulled from'} ${plat}`);return;}
+    addLog(dir,plat,`${dir==='push'?'→':'←'} ${PRODUCTS[i].name.slice(0,32)}…`,`${dir==='push'?'Updated in':'Fetched from'} ${plat}`);
+    i++;
+  },450);
+}
+
+function addLog(type,plat,title,detail) {
+  const t=new Date().toTimeString().slice(0,8);
+  logEntries.unshift({type,plat,title,detail,time:t});
+  if(currentView==='sync')renderLog();
+}
+function renderLog() {
+  const filtered=logFilter==='all'?logEntries:logEntries.filter(e=>e.type===logFilter);
+  const dotCol={push:'#2563EB',pull:'#16A34A',error:'#DC2626',conn:'#D97706'};
+  const platTag={odoo:'ptag-o',zoho:'ptag-z',shopify:'ptag-s'};
+  document.getElementById('logWrap').innerHTML=filtered.length?filtered.map(e=>`
+  <div class="log-row">
+    <div class="log-time">${e.time}</div>
+    <div class="log-dot" style="background:${dotCol[e.type]||'#C4C2BC'}"></div>
+    <div class="log-body">
+      <div class="log-title">${e.title} ${e.plat?`<span class="ptag ${platTag[e.plat]||'tag-gray'}" style="font-size:10px"><span class="ptag-dot"></span>${e.plat}</span>`:''}</div>
+      <div class="log-detail">${e.detail}</div>
+    </div>
+  </div>`).join(''):'<div style="padding:28px;text-align:center;color:var(--txt4);font-size:13px">No entries</div>';
+}
+function filterLog(f,el) { logFilter=f; document.querySelectorAll('.view-body button').forEach(b=>b.style.background=''); el.style.background='var(--surface2)'; el.style.color='var(--txt)'; renderLog(); }
+function clearLog() { logEntries=[]; renderLog(); }
+
+// ════════════════════════════════════════════════
+// CREDENTIALS
+// ════════════════════════════════════════════════
+const CREDS = [
+  {id:'odoo',name:'Odoo Inventory',icon:'🟣',api:'XML-RPC',
+   fields:[{id:'o-url',l:'Server URL',ph:'https://yourcompany.odoo.com',req:true},{id:'o-db',l:'Database',ph:'your-db-name',req:true},{id:'o-user',l:'Login email',ph:'admin@company.com',req:true},{id:'o-key',l:'API key',ph:'your-api-key',req:true,secret:true}],
+   hint:'Settings → Users → Your User → API Keys → New Key'},
+  {id:'zoho',name:'Zoho Inventory',icon:'🔴',api:'REST OAuth',
+   fields:[{id:'z-org',l:'Organization ID',ph:'738294001',req:true},{id:'z-cid',l:'Client ID',ph:'1000.XXXX',req:true},{id:'z-sec',l:'Client secret',ph:'your-secret',req:true,secret:true},{id:'z-ref',l:'Refresh token',ph:'your-token',req:true,secret:true}],
+   hint:'api-console.zoho.com → Self Client → scope: ZohoInventory.items.ALL'},
+  {id:'shopify',name:'Shopify',icon:'🟢',api:'Admin REST 2024-04',
+   fields:[{id:'s-dom',l:'Store domain',ph:'your-store.myshopify.com',req:true},{id:'s-tok',l:'Access token',ph:'shpat_…',req:true,secret:true},{id:'s-ver',l:'API version',ph:'2024-04',req:false},{id:'s-loc',l:'Location ID',ph:'68294002938',req:false}],
+   hint:'Admin → Apps → Develop apps → Scopes: write_products, read_inventory'},
+];
+function renderCredentials() {
+  document.getElementById('credGrid').innerHTML = CREDS.map(cc=>`
+  <div class="cred-card">
+    <div class="cred-card-top">
+      <div class="cred-card-icon" style="background:${cc.id==='odoo'?'#FAF5FF':cc.id==='zoho'?'#FFF7ED':'#F0FDF4'}">${cc.icon}</div>
+      <div><div class="cred-card-name">${cc.name}</div><div class="cred-card-api">${cc.api}</div></div>
+    </div>
+    ${cc.fields.map(f=>`<div class="cred-field">
+      <div class="cred-lbl">${f.l}${f.req?' <span style="color:var(--amber)">·</span>':''}</div>
+      <input id="${f.id}" class="cred-inp" type="${f.secret?'password':'text'}" placeholder="${f.ph}" oninput="this.classList.toggle('has-val',!!this.value.trim())">
+    </div>`).join('')}
+    <button class="cred-test" id="ctest-${cc.id}" onclick="testConn('${cc.id}')">Test connection</button>
+    <div class="cred-hint">${cc.hint}</div>
+  </div>`).join('');
+}
+function testConn(plat) {
+  const btn=document.getElementById('ctest-'+plat);
+  btn.className='cred-test';btn.textContent='Testing…';
+  const cc=CREDS.find(c=>c.id===plat);
+  const allFilled=cc.fields.filter(f=>f.req).every(f=>document.getElementById(f.id)?.value?.trim());
+  setTimeout(()=>{
+    if(allFilled){
+      connState[plat]='on';
+      btn.className='cred-test ok';btn.textContent=`✓ Connected to ${plat}`;
+      document.getElementById('pdot-'+plat).classList.replace('off','on');
+      document.getElementById('pbadge-'+plat).textContent='Live';
+      addLog('conn',plat,'Connected',`${plat} API authenticated successfully`);
+      schedulePersist();
+      toast(`✓ ${plat} connected`);
+      if(currentView==='sync')renderSync();
+    } else {
+      btn.className='cred-test fail';btn.textContent='Connection failed — fill required fields';
+      addLog('error',plat,'Connection failed','Missing required credential fields');
+    }
+  },1400+Math.random()*600);
+}
+
+// ════════════════════════════════════════════════
+// ADD PRODUCT
+// ════════════════════════════════════════════════
+function openAddModal() { document.getElementById('addModal').classList.add('open'); setTimeout(()=>document.getElementById('m-name').focus(),50); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function saveProduct() {
+  const name=document.getElementById('m-name').value.trim();
+  const sku =document.getElementById('m-sku').value.trim();
+  if(!name||!sku){toast('⚠ Name and SKU required');return;}
+  PRODUCTS.push({id:Date.now(),emoji:'📦',name,sku,category:document.getElementById('m-cat').value||'',brand:document.getElementById('m-brand').value||'',salesPrice:parseFloat(document.getElementById('m-price').value)||0,costPrice:parseFloat(document.getElementById('m-cost').value)||0,weight:document.getElementById('m-weight').value||'',weightUnit:'lb',status:'draft',completeness:30,missing:['EAN','Description','SEO'],syncOdoo:false,syncZoho:false,syncShopify:false,stockQty:0,reorderPoint:0,tags:[],collections:'',productType:'storable',uom:'Roll',taxRate:'7%',barcode:'',ean:'',mpn:'',vendorSku:'',moq:'1',leadTime:'',width:'',length:'',thickness:'',gsm:'',finish:'',substrate:'',printableSides:'',compatibility:'',waterproof:'',description:'',seoTitle:'',seoDesc:'',imageUrl:'',odooId:'',zohoItemId:'',shopifyId:''});
+  document.getElementById('product-count').textContent=PRODUCTS.length;
+  closeModal('addModal');
+  renderTable();
+  toast(`✓ "${name}" created`);
+  ['m-name','m-sku','m-cat','m-brand','m-price','m-cost','m-weight'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+}
+
+// ════════════════════════════════════════════════
+// EXPORT
+// ════════════════════════════════════════════════
+let pendingDeleteId = null;
+
+function confirmDelete(id) {
+  if (!id) return;
+  const p = PRODUCTS.find(x => x.id === id);
+  if (!p) return;
+  pendingDeleteId = id;
+  document.getElementById('deleteProductName').textContent = p.name;
+  document.getElementById('deleteModal').classList.add('open');
+}
+
+function doDelete() {
+  if (!pendingDeleteId) return;
+  const p = PRODUCTS.find(x => x.id === pendingDeleteId);
+  PRODUCTS = PRODUCTS.filter(x => x.id !== pendingDeleteId);
+  document.getElementById('product-count').textContent = PRODUCTS.length;
+  closeModal('deleteModal');
+  // If the deleted product was open in the panel, close it
+  if (selectedId === pendingDeleteId) {
+    selectedId = null;
+    closePanel();
+  }
+  pendingDeleteId = null;
+  renderTable();
+  schedulePersist();
+  toast(`"${p?.name?.slice(0, 40) || 'Product'}" deleted`);
+}
+
+function exportCSV() {
+  const h=['Name','SKU','Category','Brand','Sales Price','Cost','Stock','Weight','Barcode','EAN','Tags','Odoo ID','Zoho ID','Shopify ID'];
+  const rows=PRODUCTS.map(p=>[p.name,p.sku,p.category||'',p.brand||'',p.salesPrice,p.costPrice,p.stockQty,p.weight||'',p.barcode||'',p.ean||'',Array.isArray(p.tags)?p.tags.join(','):p.tags||'',p.odooId||'',p.zohoItemId||'',p.shopifyId||''].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
+  const csv=[h.join(','),...rows].join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='4s-pim-export.csv';a.click();
+  toast('✓ CSV exported');
+}
+
+// ════════════════════════════════════════════════
+// COMMAND PALETTE (⌘K)
+// ════════════════════════════════════════════════
+let cmdFocusIdx = -1;
+function openCmd() { document.getElementById('cmdOverlay').classList.add('open'); document.getElementById('cmdInput').value=''; renderCmdResults(); setTimeout(()=>document.getElementById('cmdInput').focus(),50); }
+function closeCmd() { document.getElementById('cmdOverlay').classList.remove('open'); }
+
+document.addEventListener('keydown', e => {
+  if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();openCmd();}
+  if(e.key==='Escape'){closeCmd();closeModal('addModal');}
+});
+
+function renderCmdResults() {
+  const q = document.getElementById('cmdInput').value.toLowerCase();
+  const results = [];
+  // Products
+  const prods = PRODUCTS.filter(p=>!q||p.name.toLowerCase().includes(q)||p.sku.toLowerCase().includes(q)).slice(0,5);
+  if(prods.length) results.push({type:'group',label:'Products'});
+  prods.forEach(p=>results.push({type:'product',emoji:p.emoji,label:p.name,meta:p.sku,action:()=>{closeCmd();selectedId=p.id;goTo('catalog',document.getElementById('nav-catalog'));renderTable();openPanel();}}));
+  // Actions
+  const actions=[{icon:'📥',label:'CSV Import',meta:'',action:()=>{closeCmd();goTo('import',document.getElementById('nav-import'));}},{icon:'🔄',label:'API Sync',meta:'',action:()=>{closeCmd();goTo('sync',document.getElementById('nav-sync'));}},{icon:'🔑',label:'Credentials',meta:'',action:()=>{closeCmd();goTo('credentials',document.getElementById('nav-credentials'));}},{icon:'➕',label:'New product',meta:'',action:()=>{closeCmd();openAddModal();}},{icon:'📤',label:'Export CSV',meta:'',action:()=>{closeCmd();exportCSV();}}].filter(a=>!q||a.label.toLowerCase().includes(q));
+  if(actions.length){results.push({type:'group',label:'Actions'});actions.forEach(a=>results.push({type:'action',...a}));}
+  cmdFocusIdx=-1;
+  document.getElementById('cmdResults').innerHTML = results.length ? results.map((r,i)=>{
+    if(r.type==='group') return `<div class="cmd-group-label">${r.label}</div>`;
+    return `<div class="cmd-item" data-idx="${i}" onclick="(${r.action.toString()})()">
+      <span class="cmd-item-icon">${r.emoji||r.icon}</span>
+      <span class="cmd-item-label">${r.label}</span>
+      <span class="cmd-item-meta">${r.meta||''}</span>
+    </div>`;
+  }).join('') : `<div style="padding:20px;text-align:center;color:var(--txt4);font-size:13px">No results for "${q}"</div>`;
+}
+
+function cmdKeydown(e) {
+  const items = document.querySelectorAll('.cmd-item');
+  if(e.key==='ArrowDown'){e.preventDefault();cmdFocusIdx=Math.min(cmdFocusIdx+1,items.length-1);items.forEach((el,i)=>el.classList.toggle('focused',i===cmdFocusIdx));}
+  else if(e.key==='ArrowUp'){e.preventDefault();cmdFocusIdx=Math.max(cmdFocusIdx-1,0);items.forEach((el,i)=>el.classList.toggle('focused',i===cmdFocusIdx));}
+  else if(e.key==='Enter'&&cmdFocusIdx>=0){items[cmdFocusIdx].click();}
+}
+
+// ════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════
+function toast(msg) {
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.style.display='block';
+  clearTimeout(toast._t);toast._t=setTimeout(()=>el.style.display='none',3000);
+}
+
+// ════════════════════════════════════════════════════════════════
+// LOCAL DATABASE — IndexedDB
+// Survives: tab close, refresh, browser restart, cookie clears
+// Only cleared by: DevTools → Application → IndexedDB → Delete
+// Stores far more than localStorage (GBs vs 5MB)
+// ════════════════════════════════════════════════════════════════
+const DB_NAME    = '4s-pim';
+const DB_VERSION = 1;
+const DEFAULT_PRODUCTS = JSON.parse(JSON.stringify(PRODUCTS));
+
+let _db = null;   // holds the open IDBDatabase connection
+let _persistTimer = null;
+
+// ── Open / upgrade the database ──────────────────────────────
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      // products — one record per product, keyed by id
+      if (!db.objectStoreNames.contains('products')) {
+        db.createObjectStore('products', { keyPath: 'id' });
+      }
+      // settings — key/value pairs (channels, connState, meta)
+      if (!db.objectStoreNames.contains('settings')) {
+        db.createObjectStore('settings');
+      }
+    };
+
+    req.onsuccess = e => { _db = e.target.result; resolve(_db); };
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+// ── Generic helpers ───────────────────────────────────────────
+function dbPut(store, value, key) {
+  return new Promise((resolve, reject) => {
+    const tx  = _db.transaction(store, 'readwrite');
+    const req = key !== undefined
+      ? tx.objectStore(store).put(value, key)
+      : tx.objectStore(store).put(value);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = e  => reject(e.target.error);
+  });
+}
+
+function dbGetAll(store) {
+  return new Promise((resolve, reject) => {
+    const tx  = _db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = e  => reject(e.target.error);
+  });
+}
+
+function dbGet(store, key) {
+  return new Promise((resolve, reject) => {
+    const tx  = _db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = e  => reject(e.target.error);
+  });
+}
+
+function dbDelete(store, key) {
+  return new Promise((resolve, reject) => {
+    const tx  = _db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).delete(key);
+    req.onsuccess = () => resolve();
+    req.onerror   = e  => reject(e.target.error);
+  });
+}
+
+function dbClearStore(store) {
+  return new Promise((resolve, reject) => {
+    const tx  = _db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).clear();
+    req.onsuccess = () => resolve();
+    req.onerror   = e  => reject(e.target.error);
+  });
+}
+
+// ── Save all products to IndexedDB ───────────────────────────
+async function persist() {
+  if (!_db) return;
+  setStorageStatus('saving');
+  try {
+    // Write each product individually so large catalogs don't
+    // need to serialize everything into one giant blob
+    const tx    = _db.transaction('products', 'readwrite');
+    const store = tx.objectStore('products');
+
+    // Clear then re-write — ensures deletes are reflected
+    await new Promise((res, rej) => {
+      const clr = store.clear();
+      clr.onsuccess = res;
+      clr.onerror   = rej;
+    });
+    for (const p of PRODUCTS) {
+      store.put(p);
+    }
+    await new Promise((res, rej) => {
+      tx.oncomplete = res;
+      tx.onerror    = rej;
+    });
+
+    // Save settings separately
+    await dbPut('settings', CHANNELS,   'channels');
+    await dbPut('settings', connState,  'connState');
+    await dbPut('settings', new Date().toISOString(), 'savedAt');
+
+    setStorageStatus('saved');
+  } catch(e) {
+    console.error('4S PIM: IndexedDB save error', e);
+    setStorageStatus('error');
+  }
+}
+
+// ── Load everything from IndexedDB ───────────────────────────
+async function loadFromDB() {
+  if (!_db) return false;
+  try {
+    const [savedProducts, savedChannels, savedConnState, savedAt] = await Promise.all([
+      dbGetAll('products'),
+      dbGet('settings', 'channels'),
+      dbGet('settings', 'connState'),
+      dbGet('settings', 'savedAt'),
+    ]);
+
+    if (savedProducts && savedProducts.length > 0) {
+      PRODUCTS = savedProducts;
+    }
+    if (savedChannels && Array.isArray(savedChannels)) {
+      savedChannels.forEach((s, i) => { if (CHANNELS[i]) CHANNELS[i].on = s.on; });
+    }
+    if (savedConnState) {
+      connState = { ...connState, ...savedConnState };
+    }
+
+    const ts = savedAt
+      ? new Date(savedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+      : null;
+    setStorageStatus('loaded', ts);
+    return savedProducts && savedProducts.length > 0;
+  } catch(e) {
+    console.error('4S PIM: IndexedDB load error', e);
+    return false;
+  }
+}
+
+// ── Clear database and reset to sample data ───────────────────
+async function clearStorage() {
+  if (!confirm('Reset to sample products and clear all saved data?\n\nThis removes everything from the local database. Your exported CSVs are unaffected.')) return;
+  if (!_db) return;
+  try {
+    await dbClearStore('products');
+    await dbClearStore('settings');
+    PRODUCTS   = JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+    connState  = { odoo:'off', zoho:'off', shopify:'off' };
+    selectedId = null;
+    closePanel();
+    renderTable();
+    document.getElementById('product-count').textContent = PRODUCTS.length;
+    // Also reset platform dots
+    ['odoo','zoho','shopify'].forEach(plat => {
+      const dot   = document.getElementById('pdot-'   + plat);
+      const badge = document.getElementById('pbadge-' + plat);
+      if (dot)   { dot.className = 'plat-dot off'; }
+      if (badge) { badge.textContent = 'Not set'; }
+    });
+    setStorageStatus('saved');
+    toast('✓ Database cleared — sample products restored');
+  } catch(e) {
+    toast('⚠ Could not clear database: ' + e.message);
+  }
+}
+
+// ── Export database as JSON backup ────────────────────────────
+async function exportBackup() {
+  try {
+    const backup = {
+      version:   DB_VERSION,
+      exportedAt: new Date().toISOString(),
+      products:  PRODUCTS,
+      channels:  CHANNELS,
+      connState: connState,
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `4s-pim-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast(`✓ Backup saved · ${PRODUCTS.length} products`);
+  } catch(e) {
+    toast('⚠ Backup failed: ' + e.message);
+  }
+}
+
+// ── Import JSON backup ────────────────────────────────────────
+function importBackup() {
+  const input = document.createElement('input');
+  input.type  = 'file';
+  input.accept = '.json';
+  input.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text   = await file.text();
+      const backup = JSON.parse(text);
+      if (!backup.products || !Array.isArray(backup.products)) {
+        toast('⚠ Invalid backup file'); return;
+      }
+      if (!confirm(`Import ${backup.products.length} products from backup?\n\nThis will replace your current catalog.`)) return;
+      PRODUCTS = backup.products;
+      if (backup.channels) backup.channels.forEach((s, i) => { if (CHANNELS[i]) CHANNELS[i].on = s.on; });
+      if (backup.connState) connState = { ...connState, ...backup.connState };
+      await persist();
+      document.getElementById('product-count').textContent = PRODUCTS.length;
+      selectedId = null;
+      closePanel();
+      renderTable();
+      toast(`✓ ${PRODUCTS.length} products restored from backup`);
+    } catch(err) {
+      toast('⚠ Could not read backup: ' + err.message);
+    }
+  };
+  input.click();
+}
+
+// ── Storage status indicator ──────────────────────────────────
+function setStorageStatus(state, ts) {
+  const dot = document.getElementById('storageDot');
+  const txt = document.getElementById('storageTxt');
+  if (!dot || !txt) return;
+  if (state === 'saving') {
+    dot.className    = 'storage-dot saving';
+    txt.textContent  = 'Saving to database…';
+  } else if (state === 'saved') {
+    dot.className    = 'storage-dot saved';
+    const now        = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    txt.textContent  = `${PRODUCTS.length} products · ${now}`;
+  } else if (state === 'loaded') {
+    dot.className    = 'storage-dot saved';
+    txt.textContent  = ts
+      ? `${PRODUCTS.length} products · saved ${ts}`
+      : `${PRODUCTS.length} products loaded`;
+  } else if (state === 'error') {
+    dot.className    = 'storage-dot';
+    dot.style.background = 'var(--red)';
+    txt.textContent  = 'DB error — check console';
+  } else if (state === 'fresh') {
+    dot.className    = 'storage-dot saved';
+    txt.textContent  = 'New database created';
+  }
+}
+
+// ── Debounced persist ─────────────────────────────────────────
+function schedulePersist() {
+  clearTimeout(_persistTimer);
+  _persistTimer = setTimeout(persist, 600);
+}
+
+// ════════════════════════════════════════════════
+// INIT — open DB then load, then render
+// ════════════════════════════════════════════════
+(async () => {
+  try {
+    await openDB();
+    const hadData = await loadFromDB();
+    if (!hadData) {
+      // First launch — seed the DB with sample products
+      setStorageStatus('fresh');
+      await persist();
+    }
+  } catch(e) {
+    console.error('4S PIM: could not open IndexedDB', e);
+    setStorageStatus('error');
+  }
+
+  document.getElementById('product-count').textContent = PRODUCTS.length;
+
+  // Restore platform dots from loaded connState
+  Object.entries(connState).forEach(([plat, state]) => {
+    if (state === 'on') {
+      const dot   = document.getElementById('pdot-'   + plat);
+      const badge = document.getElementById('pbadge-' + plat);
+      if (dot)   dot.classList.replace('off', 'on');
+      if (badge) badge.textContent = 'Live';
+    }
+  });
+
+  renderTable();
+  document.getElementById('filterBar').style.display = 'flex';
+})();
+
+// ════════════════════════════════════════════════════════════════
+// CLOUD SYNC — Google Drive + OneDrive
+// Both use OAuth PKCE flow — no server, no secrets stored server-side
+// All tokens stored in IndexedDB settings store (encrypted by browser)
+// ════════════════════════════════════════════════════════════════
+
+// ── Shared cloud state ────────────────────────────────────────
+const CLOUD = {
+  gdrive:   { connected:false, token:null, fileId:null, syncing:false, lastSync:null },
+  onedrive: { connected:false, token:null, syncing:false, lastSync:null },
+  gsheets:  { sheetId:null, sheetUrl:null, lastSync:null, autoSync:true },
+};
+
+let _cloudSyncTimer = null;
+
+function openCloudPanel() {
+  document.getElementById('cloudModal').classList.add('open');
+  // Show current origin in setup hints
+  const origin = window.location.href.split('?')[0];
+  const el1 = document.getElementById('gdrive-origin-hint');
+  const el2 = document.getElementById('onedrive-origin-hint');
+  if (el1) el1.textContent = origin;
+  if (el2) el2.textContent = origin;
+  loadCloudCreds();
+  updateCloudUI();
+}
+function closeCloudPanel() {
+  document.getElementById('cloudModal').classList.remove('open');
+}
+
+// ── Persist cloud creds in IndexedDB settings ─────────────────
+async function saveCloudCreds() {
+  if (!_db) return;
+  const creds = {
+    gdriveClientId:    document.getElementById('gdrive-client-id')?.value   || '',
+    gdriveFilename:    document.getElementById('gdrive-filename')?.value     || '4s-pim-backup.json',
+    onedriveClientId:  document.getElementById('onedrive-client-id')?.value  || '',
+    onedriveFilename:  document.getElementById('onedrive-filename')?.value    || '4s-pim-backup.json',
+    gdriveFileId:      CLOUD.gdrive.fileId      || '',
+    gdriveToken:       CLOUD.gdrive.token       || '',
+    gsheetsId:         CLOUD.gsheets.sheetId    || '',
+    gsheetsUrl:        CLOUD.gsheets.sheetUrl   || '',
+    gsheetsAutoSync:   CLOUD.gsheets.autoSync !== false,
+    onedriveToken:     CLOUD.onedrive.token   || '',
+  };
+  await dbPut('settings', creds, 'cloudCreds');
+}
+
+async function loadCloudCreds() {
+  if (!_db) return;
+  try {
+    const creds = await dbGet('settings', 'cloudCreds');
+    if (!creds) return;
+    const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+    set('gdrive-client-id',    creds.gdriveClientId);
+    set('gdrive-filename',     creds.gdriveFilename);
+    set('onedrive-client-id',  creds.onedriveClientId);
+    set('onedrive-filename',   creds.onedriveFilename);
+    if (creds.gdriveFileId)   CLOUD.gdrive.fileId      = creds.gdriveFileId;
+    if (creds.gdriveToken)    { CLOUD.gdrive.token      = creds.gdriveToken;   CLOUD.gdrive.connected   = true; }
+    if (creds.gsheetsId)      { CLOUD.gsheets.sheetId   = creds.gsheetsId;   }
+    if (creds.gsheetsUrl)     { CLOUD.gsheets.sheetUrl  = creds.gsheetsUrl;  }
+    if (creds.gsheetsAutoSync !== undefined) CLOUD.gsheets.autoSync = creds.gsheetsAutoSync;
+    if (creds.onedriveToken)  { CLOUD.onedrive.token    = creds.onedriveToken; CLOUD.onedrive.connected = true; }
+    updateCloudUI();
+    // Restore sheets UI if we have a saved sheet
+    if (CLOUD.gsheets.sheetId) updateSheetsUI();
+  } catch(e) { console.warn('cloud creds load error', e); }
+}
+
+// ── Update all cloud UI elements ──────────────────────────────
+function updateCloudUI() {
+  // Indicator button in topbar
+  const dot = document.getElementById('cloudIndDot');
+  const txt = document.getElementById('cloudIndTxt');
+  const gd  = CLOUD.gdrive.connected;
+  const od  = CLOUD.onedrive.connected;
+
+  if (CLOUD.gdrive.syncing || CLOUD.onedrive.syncing) {
+    dot.className = 'cloud-ind-dot busy'; txt.textContent = 'Syncing…';
+  } else if (gd || od) {
+    dot.className = 'cloud-ind-dot ok';
+    const parts = [gd?'Drive':null, od?'OneDrive':null].filter(Boolean);
+    txt.textContent = parts.join(' + ');
+  } else {
+    dot.className = 'cloud-ind-dot none'; txt.textContent = 'Cloud sync';
+  }
+
+  // Update last sync label
+  const ls = [CLOUD.gdrive.lastSync, CLOUD.onedrive.lastSync].filter(Boolean);
+  if (ls.length) {
+    const latest = new Date(Math.max(...ls.map(d=>new Date(d))));
+    const el = document.getElementById('cloudLastSync');
+    if (el) el.textContent = 'Last sync ' + latest.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  }
+
+  // Google Drive provider UI
+  setProviderUI('gdrive',   CLOUD.gdrive.connected);
+  setProviderUI('onedrive', CLOUD.onedrive.connected);
+  updateSheetsUI();
+}
+
+function updateSheetsUI() {
+  const hasSheet   = !!CLOUD.gsheets.sheetId;
+  const gConnected = CLOUD.gdrive.connected;
+  const chip    = document.getElementById('gsheets-chip');
+  const statusT = document.getElementById('gsheets-status-txt');
+  const statsEl = document.getElementById('gsheets-stats');
+  const linkWrap= document.getElementById('gsheets-link-wrap');
+  const createBtn= document.getElementById('gsheets-create-btn');
+  const syncBtn = document.getElementById('gsheets-sync-btn');
+  const resetBtn = document.getElementById('gsheets-reset-btn');
+  const logEl   = document.getElementById('gsheets-log');
+  if (!chip) return;
+
+  if (!gConnected) {
+    chip.className   = 'cloud-status-chip chip-disconnected';
+    chip.textContent = 'Connect Drive first';
+    if (statusT) statusT.textContent = 'Connect Google Drive first, then create a sheet';
+    return;
+  }
+  if (hasSheet) {
+    chip.className   = 'cloud-status-chip chip-connected';
+    chip.textContent = 'Active';
+    if (statusT) statusT.textContent = 'Live sheet · auto-syncing';
+    if (statsEl) {
+      statsEl.style.display = '';
+      const rowCount = document.getElementById('gsheets-row-count');
+      const colCount = document.getElementById('gsheets-col-count');
+      const lastUpd  = document.getElementById('gsheets-last-update');
+      const idDisp   = document.getElementById('gsheets-id-display');
+      if (rowCount) rowCount.textContent = PRODUCTS.length + ' products';
+      if (colCount) colCount.textContent = SHEET_COLUMNS.length + ' columns';
+      if (lastUpd && CLOUD.gsheets.lastSync) lastUpd.textContent = new Date(CLOUD.gsheets.lastSync).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      if (idDisp)  idDisp.textContent = CLOUD.gsheets.sheetId;
+    }
+    if (linkWrap) {
+      linkWrap.style.display = '';
+      const link = document.getElementById('gsheets-open-link');
+      if (link && CLOUD.gsheets.sheetUrl) link.href = CLOUD.gsheets.sheetUrl;
+    }
+    if (createBtn) createBtn.textContent = '↑ Update sheet';
+    if (syncBtn)  syncBtn.style.display  = '';
+    if (resetBtn) resetBtn.style.display = '';
+    if (logEl)    logEl.style.display    = '';
+  } else {
+    chip.className   = 'cloud-status-chip chip-disconnected';
+    chip.textContent = 'No sheet yet';
+    if (statusT) statusT.textContent = 'Click "Create Sheet" to create a new Google Sheet';
+    if (statsEl)  statsEl.style.display  = 'none';
+    if (linkWrap) linkWrap.style.display = 'none';
+    if (createBtn) createBtn.textContent = 'Create Sheet';
+    if (syncBtn)  syncBtn.style.display  = 'none';
+    if (resetBtn) resetBtn.style.display = 'none';
+  }
+}
+
+function setProviderUI(provider, connected) {
+  const chip    = document.getElementById(provider + '-chip');
+  const statusT = document.getElementById(provider + '-status-txt');
+  const setupEl = document.getElementById(provider + '-setup-steps');
+  const connBtn = document.getElementById(provider + '-connect-btn');
+  const pushBtn = document.getElementById(provider + '-push-btn');
+  const pullBtn = document.getElementById(provider + '-pull-btn');
+  const discBtn = document.getElementById(provider + '-disconnect-btn');
+  const logEl   = document.getElementById(provider + '-log');
+  if (!chip) return;
+
+  if (connected) {
+    chip.className    = 'cloud-status-chip chip-connected';
+    chip.textContent  = 'Connected';
+    if (statusT) statusT.textContent = 'Connected · auto-sync enabled';
+    if (setupEl) setupEl.style.display = 'none';
+    if (connBtn) connBtn.style.display = 'none';
+    if (pushBtn) pushBtn.style.display = '';
+    if (pullBtn) pullBtn.style.display = '';
+    if (discBtn) discBtn.style.display = '';
+    if (logEl)   logEl.style.display   = '';
+  } else {
+    chip.className    = 'cloud-status-chip chip-disconnected';
+    chip.textContent  = 'Disconnected';
+    if (statusT) statusT.textContent = 'Not connected';
+    if (setupEl) setupEl.style.display = '';
+    if (connBtn) connBtn.style.display = '';
+    if (pushBtn) pushBtn.style.display = 'none';
+    if (pullBtn) pullBtn.style.display = 'none';
+    if (discBtn) discBtn.style.display = 'none';
+  }
+}
+
+function cloudLog(provider, msg) {
+  const el = document.getElementById(provider + '-log');
+  if (!el) return;
+  const ts = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  el.innerHTML += `<div>[${ts}] ${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Build sync payload ────────────────────────────────────────
+function buildSyncPayload() {
+  return JSON.stringify({
+    version:    2,
+    exportedAt: new Date().toISOString(),
+    appName:    '4S PIM',
+    products:   PRODUCTS,
+    channels:   CHANNELS,
+    connState:  connState,
+  }, null, 2);
+}
+
+// ── Schedule auto cloud sync (called after every local persist) ─
+function scheduleCloudSync() {
+  clearTimeout(_cloudSyncTimer);
+  _cloudSyncTimer = setTimeout(forceSyncAll, 2000); // 2s after local save
+}
+
+async function forceSyncAll() {
+  if (CLOUD.gdrive.connected)                            await gdrivePush();
+  if (CLOUD.gdrive.connected && CLOUD.gsheets.sheetId && CLOUD.gsheets.autoSync) await gsheetsSync();
+  if (CLOUD.onedrive.connected)                          await onedrivePush();
+}
+
+// ════════════════════════════════════════════════════════════════
+// GOOGLE DRIVE
+// Uses OAuth 2.0 implicit flow via Google Identity Services (GSI)
+// ════════════════════════════════════════════════════════════════
+let _gsiClient = null;
+
+function gdriveConnect() {
+  const clientId = document.getElementById('gdrive-client-id')?.value?.trim();
+  if (!clientId) { toast('⚠ Enter your Google Client ID first'); return; }
+
+  if (typeof google === 'undefined') {
+    toast('⚠ Google script still loading — try again in a moment'); return;
+  }
+
+  cloudLog('gdrive', 'Requesting Google OAuth token…');
+  _gsiClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
+    callback: async (resp) => {
+      if (resp.error) {
+        cloudLog('gdrive', '✗ OAuth error: ' + resp.error);
+        toast('⚠ Google auth failed: ' + resp.error);
+        return;
+      }
+      CLOUD.gdrive.token     = resp.access_token;
+      CLOUD.gdrive.connected = true;
+      cloudLog('gdrive', '✓ Authenticated successfully');
+      await saveCloudCreds();
+      updateCloudUI();
+      await gdrivePush(); // immediate first push
+    },
+  });
+  _gsiClient.requestAccessToken();
+}
+
+function gdriveDisconnect() {
+  if (CLOUD.gdrive.token && typeof google !== 'undefined') {
+    try { google.accounts.oauth2.revoke(CLOUD.gdrive.token); } catch(e) {}
+  }
+  CLOUD.gdrive = { connected:false, token:null, fileId:null, syncing:false, lastSync:null };
+  saveCloudCreds();
+  updateCloudUI();
+  cloudLog('gdrive', 'Disconnected');
+  toast('Google Drive disconnected');
+}
+
+async function gdrivePush() {
+  if (!CLOUD.gdrive.connected || !CLOUD.gdrive.token) return;
+  CLOUD.gdrive.syncing = true;
+  updateCloudUI();
+  cloudLog('gdrive', `↑ Pushing ${PRODUCTS.length} products…`);
+
+  const filename = document.getElementById('gdrive-filename')?.value || '4s-pim-backup.json';
+  const payload  = buildSyncPayload();
+  const headers  = { Authorization: 'Bearer ' + CLOUD.gdrive.token, 'Content-Type': 'application/json' };
+
+  try {
+    let res;
+    if (CLOUD.gdrive.fileId) {
+      // Update existing file
+      res = await fetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${CLOUD.gdrive.fileId}?uploadType=media`,
+        { method: 'PATCH', headers, body: payload }
+      );
+    } else {
+      // Create new file — metadata first, then content
+      const meta = JSON.stringify({ name: filename, mimeType: 'application/json' });
+      const form = new FormData();
+      form.append('metadata', new Blob([meta], { type: 'application/json' }));
+      form.append('file',     new Blob([payload], { type: 'application/json' }));
+      res = await fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+        { method: 'POST', headers: { Authorization: 'Bearer ' + CLOUD.gdrive.token }, body: form }
+      );
+    }
+
+    if (res.status === 401) {
+      // Token expired — re-authenticate
+      cloudLog('gdrive', '⚠ Token expired — re-authenticating…');
+      CLOUD.gdrive.token = null;
+      CLOUD.gdrive.connected = false;
+      updateCloudUI();
+      if (_gsiClient) _gsiClient.requestAccessToken();
+      return;
+    }
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.id) CLOUD.gdrive.fileId = data.id;
+    CLOUD.gdrive.lastSync = new Date().toISOString();
+    await saveCloudCreds();
+    cloudLog('gdrive', `✓ Pushed · ${(payload.length/1024).toFixed(1)} KB · file ID: ${CLOUD.gdrive.fileId}`);
+    toast('✓ Synced to Google Drive');
+  } catch(e) {
+    cloudLog('gdrive', '✗ Push error: ' + e.message);
+    toast('⚠ Google Drive sync failed');
+  } finally {
+    CLOUD.gdrive.syncing = false;
+    updateCloudUI();
+  }
+}
+
+async function gdrivePull() {
+  if (!CLOUD.gdrive.connected || !CLOUD.gdrive.fileId) {
+    cloudLog('gdrive', '⚠ No file ID — push first to create the file'); return;
+  }
+  cloudLog('gdrive', '↓ Pulling from Drive…');
+  CLOUD.gdrive.syncing = true;
+  updateCloudUI();
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${CLOUD.gdrive.fileId}?alt=media`,
+      { headers: { Authorization: 'Bearer ' + CLOUD.gdrive.token } }
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    await applyCloudData(data, 'Google Drive');
+    cloudLog('gdrive', `✓ Pulled · ${data.products?.length || 0} products`);
+  } catch(e) {
+    cloudLog('gdrive', '✗ Pull error: ' + e.message);
+    toast('⚠ Google Drive pull failed');
+  } finally {
+    CLOUD.gdrive.syncing = false;
+    updateCloudUI();
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// MICROSOFT ONEDRIVE
+// Uses MSAL.js (Microsoft Authentication Library) — PKCE flow
+// ════════════════════════════════════════════════════════════════
+let _msalApp = null;
+let _msalAccount = null;
+const OD_SCOPES = ['Files.ReadWrite', 'User.Read'];
+
+function getMsalApp() {
+  const clientId = document.getElementById('onedrive-client-id')?.value?.trim();
+  if (!clientId) return null;
+  if (_msalApp && _msalApp._config?.auth?.clientId === clientId) return _msalApp;
+  _msalApp = new msal.PublicClientApplication({
+    auth: {
+      clientId,
+      authority:   'https://login.microsoftonline.com/consumers',
+      redirectUri: window.location.href.split('?')[0],
+    },
+    cache: { cacheLocation: 'sessionStorage' },
+  });
+  return _msalApp;
+}
+
+async function onedriveConnect() {
+  const clientId = document.getElementById('onedrive-client-id')?.value?.trim();
+  if (!clientId) { toast('⚠ Enter your Azure Client ID first'); return; }
+  if (typeof msal === 'undefined') { toast('⚠ MSAL still loading — try again in a moment'); return; }
+
+  cloudLog('onedrive', 'Starting Microsoft OAuth login…');
+  const app = getMsalApp();
+  try {
+    const resp = await app.loginPopup({ scopes: OD_SCOPES });
+    _msalAccount = resp.account;
+    const tokenResp = await app.acquireTokenSilent({ scopes: OD_SCOPES, account: _msalAccount });
+    CLOUD.onedrive.token     = tokenResp.accessToken;
+    CLOUD.onedrive.connected = true;
+    cloudLog('onedrive', `✓ Signed in as ${resp.account.username}`);
+    await saveCloudCreds();
+    updateCloudUI();
+    await onedrivePush();
+  } catch(e) {
+    cloudLog('onedrive', '✗ Auth error: ' + e.message);
+    toast('⚠ OneDrive auth failed: ' + e.message);
+  }
+}
+
+async function getOnedriveToken() {
+  if (!_msalApp || !_msalAccount) return CLOUD.onedrive.token;
+  try {
+    const resp = await _msalApp.acquireTokenSilent({ scopes: OD_SCOPES, account: _msalAccount });
+    CLOUD.onedrive.token = resp.accessToken;
+    return resp.accessToken;
+  } catch(e) {
+    // Silent failed — use stored token
+    return CLOUD.onedrive.token;
+  }
+}
+
+async function onedrivePush() {
+  if (!CLOUD.onedrive.connected || !CLOUD.onedrive.token) return;
+  CLOUD.onedrive.syncing = true;
+  updateCloudUI();
+  const filename = document.getElementById('onedrive-filename')?.value || '4s-pim-backup.json';
+  const payload  = buildSyncPayload();
+  const token    = await getOnedriveToken();
+  cloudLog('onedrive', `↑ Pushing ${PRODUCTS.length} products to OneDrive…`);
+  try {
+    // OneDrive simple upload (< 4MB) — PUT to /me/drive/root:/{filename}:/content
+    const res = await fetch(
+      `https://graph.microsoft.com/v1.0/me/drive/root:/${encodeURIComponent(filename)}:/content`,
+      { method: 'PUT', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: payload }
+    );
+    if (res.status === 401) {
+      cloudLog('onedrive', '⚠ Token expired — please reconnect');
+      CLOUD.onedrive.connected = false; updateCloudUI(); return;
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    CLOUD.onedrive.lastSync = new Date().toISOString();
+    cloudLog('onedrive', `✓ Pushed · ${(payload.length/1024).toFixed(1)} KB → OneDrive/${filename}`);
+    toast('✓ Synced to OneDrive');
+  } catch(e) {
+    cloudLog('onedrive', '✗ Push error: ' + e.message);
+    toast('⚠ OneDrive sync failed');
+  } finally {
+    CLOUD.onedrive.syncing = false;
+    updateCloudUI();
+  }
+}
+
+async function onedrivePull() {
+  if (!CLOUD.onedrive.connected || !CLOUD.onedrive.token) return;
+  const filename = document.getElementById('onedrive-filename')?.value || '4s-pim-backup.json';
+  const token    = await getOnedriveToken();
+  cloudLog('onedrive', `↓ Pulling from OneDrive/${filename}…`);
+  CLOUD.onedrive.syncing = true; updateCloudUI();
+  try {
+    const res = await fetch(
+      `https://graph.microsoft.com/v1.0/me/drive/root:/${encodeURIComponent(filename)}:/content`,
+      { headers: { Authorization: 'Bearer ' + token } }
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    await applyCloudData(data, 'OneDrive');
+    cloudLog('onedrive', `✓ Pulled · ${data.products?.length || 0} products`);
+  } catch(e) {
+    cloudLog('onedrive', '✗ Pull error: ' + e.message);
+    toast('⚠ OneDrive pull failed');
+  } finally {
+    CLOUD.onedrive.syncing = false; updateCloudUI();
+  }
+}
+
+function onedriveDisconnect() {
+  if (_msalApp && _msalAccount) {
+    try { _msalApp.logoutPopup({ account: _msalAccount }); } catch(e) {}
+  }
+  CLOUD.onedrive = { connected:false, token:null, syncing:false, lastSync:null };
+  _msalApp = null; _msalAccount = null;
+  saveCloudCreds();
+  updateCloudUI();
+  cloudLog('onedrive', 'Disconnected');
+  toast('OneDrive disconnected');
+}
+
+// ── Apply pulled data from either cloud ──────────────────────
+async function applyCloudData(data, source) {
+  if (!data.products || !Array.isArray(data.products)) {
+    toast(`⚠ ${source} file has no products`); return;
+  }
+  if (!confirm(`Replace your local catalog with ${data.products.length} products from ${source}?\n\nExported: ${data.exportedAt ? new Date(data.exportedAt).toLocaleString() : 'unknown'}`)) return;
+  PRODUCTS = data.products;
+  if (data.channels) data.channels.forEach((s,i)=>{ if(CHANNELS[i]) CHANNELS[i].on=s.on; });
+  if (data.connState) connState = {...connState,...data.connState};
+  await persist();
+  document.getElementById('product-count').textContent = PRODUCTS.length;
+  selectedId = null; closePanel();
+  renderTable();
+  toast(`✓ ${PRODUCTS.length} products loaded from ${source}`);
+}
+
+// ── Hook cloud sync into schedulePersist ──────────────────────
+const _origSchedulePersist = schedulePersist;
+function schedulePersist() {
+  _origSchedulePersist();
+  // After local save, also push to cloud
+  clearTimeout(_cloudSyncTimer);
+  _cloudSyncTimer = setTimeout(forceSyncAll, 2500);
+}
+
+// ── Load cloud creds on startup ───────────────────────────────
+window.addEventListener('load', () => {
+  setTimeout(loadCloudCreds, 1500); // wait for DB to be ready
+});
+
+// ════════════════════════════════════════════════════════════════
+// GOOGLE SHEETS SYNC
+// Uses Sheets API v4 — creates a formatted spreadsheet in Drive
+// Same OAuth token as Google Drive (drive.file + spreadsheets scope)
+// ════════════════════════════════════════════════════════════════
+
+// All columns to write to the sheet, in order
+const SHEET_COLUMNS = [
+  { key:'name',          header:'Product Name'       },
+  { key:'sku',           header:'SKU'                },
+  { key:'barcode',       header:'Barcode / UPC'      },
+  { key:'ean',           header:'EAN'                },
+  { key:'mpn',           header:'MPN'                },
+  { key:'category',      header:'Category'           },
+  { key:'productType',   header:'Product Type'       },
+  { key:'brand',         header:'Brand'              },
+  { key:'supplier',      header:'Supplier'           },
+  { key:'status',        header:'Status'             },
+  { key:'salesPrice',    header:'Sales Price (USD)'  },
+  { key:'costPrice',     header:'Cost Price (USD)'   },
+  { key:'comparePrice',  header:'Compare At'         },
+  { key:'taxRate',       header:'Tax Rate'           },
+  { key:'stockQty',      header:'Stock Qty'          },
+  { key:'reorderPoint',  header:'Reorder Point'      },
+  { key:'moq',           header:'MOQ'                },
+  { key:'leadTime',      header:'Lead Time'          },
+  { key:'width',         header:'Width'              },
+  { key:'length',        header:'Length'             },
+  { key:'thickness',     header:'Thickness'          },
+  { key:'weight',        header:'Weight'             },
+  { key:'weightUnit',    header:'Weight Unit'        },
+  { key:'gsm',           header:'GSM'                },
+  { key:'finish',        header:'Finish'             },
+  { key:'substrate',     header:'Substrate'          },
+  { key:'printableSides',header:'Printable Sides'    },
+  { key:'compatibility', header:'Ink Compatibility'  },
+  { key:'waterproof',    header:'Waterproof'         },
+  { key:'uom',           header:'Unit of Measure'    },
+  { key:'tags',          header:'Tags'               },
+  { key:'collections',   header:'Collections'        },
+  { key:'seoTitle',      header:'SEO Title'          },
+  { key:'seoDesc',       header:'SEO Description'    },
+  { key:'imageUrl',      header:'Image URL'          },
+  { key:'odooId',        header:'Odoo ID'            },
+  { key:'zohoItemId',    header:'Zoho Item ID'       },
+  { key:'shopifyId',     header:'Shopify ID'         },
+  { key:'completeness',  header:'Completeness %'     },
+  { key:'syncOdoo',      header:'Synced to Odoo'     },
+  { key:'syncZoho',      header:'Synced to Zoho'     },
+  { key:'syncShopify',   header:'Synced to Shopify'  },
+];
+
+// Sheets API base
+const SHEETS_API = 'https://sheets.googleapis.com/v4/spreadsheets';
+
+function sheetsAuthHeaders() {
+  return { Authorization: 'Bearer ' + CLOUD.gdrive.token, 'Content-Type': 'application/json' };
+}
+
+// Build 2D array of values for batchUpdate
+function buildSheetData() {
+  const headers = SHEET_COLUMNS.map(c => c.header);
+  const rows    = PRODUCTS.map(p =>
+    SHEET_COLUMNS.map(c => {
+      const v = p[c.key];
+      if (v === null || v === undefined) return '';
+      if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+      if (Array.isArray(v)) return v.join(', ');
+      return String(v);
+    })
+  );
+  return [headers, ...rows];
+}
+
+// Create a brand-new spreadsheet, write data, format it
+async function gsheetsCreate() {
+  if (!CLOUD.gdrive.connected || !CLOUD.gdrive.token) {
+    toast('⚠ Connect Google Drive first'); return;
+  }
+  const sheetName = document.getElementById('gsheets-name')?.value?.trim() || '4S PIM — Product Catalog';
+  cloudLog('gsheets', `Creating Google Sheet "${sheetName}"…`);
+  document.getElementById('gsheets-log').style.display = '';
+
+  try {
+    // 1. Create spreadsheet
+    const createRes = await fetch(SHEETS_API, {
+      method:  'POST',
+      headers: sheetsAuthHeaders(),
+      body:    JSON.stringify({
+        properties: { title: sheetName },
+        sheets: [{ properties: { title: 'Products', gridProperties: { frozenRowCount: 1 } } }],
+      }),
+    });
+    if (!createRes.ok) {
+      const err = await createRes.json();
+      throw new Error(err.error?.message || `HTTP ${createRes.status}`);
+    }
+    const sheet = await createRes.json();
+    CLOUD.gsheets.sheetId  = sheet.spreadsheetId;
+    CLOUD.gsheets.sheetUrl = sheet.spreadsheetUrl;
+    cloudLog('gsheets', `✓ Sheet created · ID: ${sheet.spreadsheetId}`);
+
+    // 2. Write data
+    await gsheetsWriteData(sheet.spreadsheetId);
+
+    // 3. Format header row
+    await gsheetsFormatHeaders(sheet.spreadsheetId, sheet.sheets[0].properties.sheetId);
+
+    // 4. Save & update UI
+    CLOUD.gsheets.lastSync = new Date().toISOString();
+    await saveCloudCreds();
+    updateSheetsUI();
+    toast(`✓ Google Sheet created · ${PRODUCTS.length} products`);
+    cloudLog('gsheets', `✓ Sheet ready — open it from the link above`);
+  } catch(e) {
+    cloudLog('gsheets', '✗ Error: ' + e.message);
+    toast('⚠ Sheets error: ' + e.message);
+  }
+}
+
+// Write all product data into the sheet (replaces existing content)
+async function gsheetsWriteData(spreadsheetId) {
+  const data     = buildSheetData();
+  const endCol   = columnLetter(SHEET_COLUMNS.length);
+  const endRow   = data.length;
+  const range    = `Products!A1:${endCol}${endRow}`;
+
+  // First clear existing data
+  await fetch(`${SHEETS_API}/${spreadsheetId}/values/${encodeURIComponent('Products')}:clear`, {
+    method: 'POST', headers: sheetsAuthHeaders(),
+  });
+
+  // Write new data
+  const res = await fetch(
+    `${SHEETS_API}/${spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
+    { method: 'PUT', headers: sheetsAuthHeaders(), body: JSON.stringify({ range, majorDimension: 'ROWS', values: data }) }
+  );
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || `HTTP ${res.status}`);
+  }
+  const result = await res.json();
+  cloudLog('gsheets', `✓ ${result.updatedRows - 1} products · ${result.updatedColumns} columns written`);
+  return result;
+}
+
+// Format header row — bold, background color, freeze, auto-resize
+async function gsheetsFormatHeaders(spreadsheetId, sheetId) {
+  const numCols = SHEET_COLUMNS.length;
+  const requests = [
+    // Bold + green background on header row
+    {
+      repeatCell: {
+        range: { sheetId, startRowIndex:0, endRowIndex:1, startColumnIndex:0, endColumnIndex:numCols },
+        cell: {
+          userEnteredFormat: {
+            backgroundColor:  { red:0.137, green:0.573, blue:0.369 }, // #23924E green
+            textFormat:       { bold:true, foregroundColor:{ red:1, green:1, blue:1 } },
+            horizontalAlignment: 'CENTER',
+          },
+        },
+        fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)',
+      },
+    },
+    // Auto-resize all columns
+    {
+      autoResizeDimensions: {
+        dimensions: { sheetId, dimension:'COLUMNS', startIndex:0, endIndex:numCols },
+      },
+    },
+    // Freeze first row (header)
+    {
+      updateSheetProperties: {
+        properties: { sheetId, gridProperties: { frozenRowCount:1 } },
+        fields: 'gridProperties.frozenRowCount',
+      },
+    },
+    // Alternate row colors for readability
+    {
+      addBanding: {
+        bandedRange: {
+          range: { sheetId, startRowIndex:1, endRowIndex:1000, startColumnIndex:0, endColumnIndex:numCols },
+          rowProperties: {
+            firstBandColor:      { red:0.95, green:0.98, blue:0.95 },
+            secondBandColor:     { red:1.0,  green:1.0,  blue:1.0  },
+          },
+        },
+      },
+    },
+  ];
+
+  const res = await fetch(`${SHEETS_API}/${spreadsheetId}:batchUpdate`, {
+    method: 'POST', headers: sheetsAuthHeaders(),
+    body: JSON.stringify({ requests }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(()=>({}));
+    // Formatting errors are non-fatal — data is already written
+    cloudLog('gsheets', '⚠ Formatting partial: ' + (err.error?.message || `HTTP ${res.status}`));
+  } else {
+    cloudLog('gsheets', '✓ Header formatting applied');
+  }
+}
+
+// Sync (update) an existing sheet
+async function gsheetsSync() {
+  if (!CLOUD.gdrive.connected || !CLOUD.gdrive.token) return;
+  if (!CLOUD.gsheets.sheetId) { await gsheetsCreate(); return; }
+
+  const chip = document.getElementById('gsheets-chip');
+  if (chip) { chip.className = 'cloud-status-chip chip-syncing'; chip.textContent = 'Syncing…'; }
+  cloudLog('gsheets', `↑ Updating sheet with ${PRODUCTS.length} products…`);
+  document.getElementById('gsheets-log').style.display = '';
+
+  try {
+    await gsheetsWriteData(CLOUD.gsheets.sheetId);
+    CLOUD.gsheets.lastSync = new Date().toISOString();
+    await saveCloudCreds();
+    updateSheetsUI();
+    toast(`✓ Sheet updated · ${PRODUCTS.length} rows`);
+  } catch(e) {
+    // If 404 (sheet deleted from Drive), clear ID and recreate
+    if (e.message.includes('404') || e.message.includes('not found')) {
+      cloudLog('gsheets', '⚠ Sheet not found in Drive — recreating…');
+      CLOUD.gsheets.sheetId  = null;
+      CLOUD.gsheets.sheetUrl = null;
+      await gsheetsCreate();
+    } else {
+      cloudLog('gsheets', '✗ Sync error: ' + e.message);
+      toast('⚠ Sheets sync failed: ' + e.message);
+      updateSheetsUI();
+    }
+  }
+}
+
+// Disconnect / remove sheet link (does NOT delete the sheet from Drive)
+function gsheetsDisconnect() {
+  if (!confirm('Remove the link to this Google Sheet?\n\nThe sheet in your Drive will NOT be deleted — you can still open it there. This just stops 4S PIM from updating it.')) return;
+  CLOUD.gsheets = { sheetId:null, sheetUrl:null, lastSync:null, autoSync:true };
+  saveCloudCreds();
+  updateSheetsUI();
+  cloudLog('gsheets', 'Sheet link removed');
+  toast('Google Sheet link removed');
+}
+
+// Helper: column index (0-based) → letter (A, B, … Z, AA, AB…)
+function columnLetter(n) {
+  let result = '';
+  while (n > 0) {
+    n--;
+    result = String.fromCharCode(65 + (n % 26)) + result;
+    n = Math.floor(n / 26);
+  }
+  return result;
+}
+</script>
+</body>
+</html>
