@@ -889,6 +889,23 @@ tr:hover .row-del { opacity: 1; }
   margin-bottom: 4px;
 }
 .page-sub { font-size: 13px; color: var(--txt3); margin-bottom: 20px; }
+
+/* ── GROUP ROWS ─────────────────────────────── */
+.grp-row {
+  background: var(--surface);
+  cursor: pointer;
+  transition: background .1s;
+  border-top: 2px solid var(--border);
+}
+.grp-row:hover { background: var(--accent-bg); }
+.grp-row.selected { background: var(--accent-bg); }
+.grp-chevron {
+  font-size: 11px; color: var(--txt3); flex-shrink: 0;
+  transition: transform .15s;
+}
+.variant-row { transition: background .1s; }
+.variant-row:hover { background: var(--surface3) !important; }
+.variant-row.selected { background: var(--accent-bg) !important; }
 </style>
 </head>
 <body>
@@ -1461,7 +1478,7 @@ const SCHEMA = [
 // ════════════════════════════════════════════════
 let currentView = 'catalog';
 let selectedId  = null;
-let detailTab   = 'fields';
+let detailTab   = 'overview';
 let filterMode  = 'all';
 let viewMode    = 'table';
 let logEntries  = [];
@@ -1471,6 +1488,10 @@ let connState   = {odoo:'off',zoho:'off',shopify:'off'};
 // CSV / Import state
 let csvHeaders=[], csvRows=[], csvMappings={}, csvPlatform=null, csvFileType='CSV';
 let importMode = 'file'; // 'file' | 'notion'
+let GROUPS = [];
+let expandedGroups = new Set();
+let selectedGroupId = null;
+let groupDetailTab = 'marketing';
 const PIM_FIELD_KEYS = SCHEMA.flatMap(g=>g.fields.map(f=>f.pim)).concat(['— Ignore —']);
 
 // ════════════════════════════════════════════════
@@ -1512,6 +1533,66 @@ function tagColor(i) {
   return cols[i % cols.length];
 }
 
+// ── SKU GROUPING ─────────────────────────────
+function getSkuPrefix(sku) {
+  if (!sku) return '__nosku__';
+  const parts = sku.trim().split('-');
+  return parts.length > 2 ? parts.slice(0, -1).join('-') : sku;
+}
+
+function buildGroups() {
+  const prefixMap = {};
+  PRODUCTS.forEach(p => {
+    const pfx = getSkuPrefix(p.sku);
+    if (!prefixMap[pfx]) prefixMap[pfx] = [];
+    prefixMap[pfx].push(p.id);
+  });
+
+  GROUPS = Object.entries(prefixMap)
+    .filter(([, ids]) => ids.length > 1)
+    .map(([prefix, ids]) => {
+      const gid = 'grp_' + prefix.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const existing = GROUPS.find(g => g.id === gid);
+      let saved = {};
+      try { saved = JSON.parse(localStorage.getItem(gid) || '{}'); } catch(e) {}
+      const fp = PRODUCTS.find(p => p.id === ids[0]);
+      const baseName = fp ? fp.name.replace(/\s+\d[\d"'×x\s].*/i, '').trim() || prefix : prefix;
+      return {
+        id: gid,
+        skuPrefix: prefix,
+        name: existing?.name || saved?.name || baseName,
+        emoji: fp?.emoji || '📦',
+        variants: ids,
+        marketing: existing?.marketing || saved?.marketing || {
+          headline: '', shortDesc: '', longDesc: '',
+          bullets: ['', '', '', '', ''],
+          targetAudience: '', useCases: '', campaignTags: '',
+          seoTitle: '', seoDescription: ''
+        },
+        designBrief: existing?.designBrief || saved?.designBrief || {
+          status: 'none', brief: '', deliverables: '',
+          designer: '', dueDate: '', notes: ''
+        },
+        faq: existing?.faq || saved?.faq || []
+      };
+    });
+}
+
+function persistGroup(gid) {
+  const g = GROUPS.find(x => x.id === gid);
+  if (!g) return;
+  localStorage.setItem(gid, JSON.stringify({ name: g.name, marketing: g.marketing, designBrief: g.designBrief, faq: g.faq }));
+}
+
+function groupCompScore(g) {
+  const m = g.marketing;
+  const mFilled = [m.headline, m.shortDesc, m.longDesc, m.targetAudience, m.useCases].filter(Boolean).length;
+  const mPct = Math.round((mFilled / 5) * 100);
+  const dStatus = g.designBrief.status;
+  const hasFaq = g.faq.length > 0;
+  return { mPct, dStatus, hasFaq };
+}
+
 function renderTable() {
   const rows = getFiltered();
 
@@ -1532,6 +1613,20 @@ function renderTable() {
     return;
   }
 
+  // Build grouped structure
+  const inGroup = new Set();
+  const groupedRows = []; // {type:'group', group, variants:[]} | {type:'product', product}
+
+  if (GROUPS.length > 0) {
+    GROUPS.forEach(g => {
+      const gVariants = g.variants.map(id => rows.find(p => p.id === id)).filter(Boolean);
+      if (gVariants.length === 0) return;
+      gVariants.forEach(p => inGroup.add(p.id));
+      groupedRows.push({ type: 'group', group: g, variants: gVariants });
+    });
+  }
+  rows.filter(p => !inGroup.has(p.id)).forEach(p => groupedRows.push({ type: 'product', product: p }));
+
   const html = `
   <table class="att-table">
     <thead><tr>
@@ -1547,48 +1642,140 @@ function renderTable() {
       <th style="width:40px"></th>
     </tr></thead>
     <tbody>
-    ${rows.map(p=>`
-    <tr data-id="${p.id}" class="${selectedId===p.id?'selected':''}">
-      <td style="text-align:center;font-size:16px">${p.emoji}</td>
-      <td>
-        <div class="cell-name">
-          <span>${p.name}</span>
-        </div>
-      </td>
-      <td><span class="cell-mono">${p.sku}</span></td>
-      <td><span class="tag tag-gray">${p.category}</span></td>
-      <td><span class="tag ${p.status==='active'?'tag-green':'tag-amber'}">${p.status}</span></td>
-      <td>
-        <div style="display:flex;gap:4px;flex-wrap:wrap">
-          ${(Array.isArray(p.channels)&&p.channels.length>0)
-            ? p.channels.slice(0,3).map(ch=>{const c=CHANNELS.find(x=>x.name===ch);const col=c?c.color:'#6B6860';return `<span class="ptag" style="background:${col}18;color:${col};border-color:${col}44;font-size:10px"><span class="ptag-dot"></span>${ch}</span>`;}).join('')
-            : '<span style="font-size:11px;color:var(--txt4)">—</span>'}
-        </div>
-      </td>
-      <td>
-        <div class="comp-wrap">
-          <div class="comp-track"><div class="comp-bar" style="width:${p.completeness}%;background:${compColor(p.completeness)}"></div></div>
-          <span class="comp-pct" style="color:${compColor(p.completeness)}">${p.completeness}%</span>
-        </div>
-      </td>
-      <td style="color:${stockColor(p.stockQty)};font-weight:500">${p.stockQty}</td>
-      <td style="font-weight:500;color:var(--txt)">$${p.salesPrice.toFixed(2)}</td>
-      <td class="td-actions" onclick="event.stopPropagation()">
-        <button class="row-del" title="Delete product" onclick="confirmDelete(${p.id})">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 10h8l1-10"/></svg>
-        </button>
-      </td>
-    </tr>`).join('')}
+    ${groupedRows.map(item => {
+      if (item.type === 'group') {
+        const g = item.group;
+        const expanded = expandedGroups.has(g.id);
+        const cs = groupCompScore(g);
+        const dColors = {none:'#C2BFB8',requested:'#D97706',in_progress:'#2563EB',approved:'#16A34A',complete:'#16A34A'};
+        const dCol = dColors[cs.dStatus] || '#C2BFB8';
+        const variantRows = expanded ? item.variants.map(p => `
+        <tr data-id="${p.id}" data-group="${g.id}" class="variant-row${selectedId===p.id?' selected':''}" style="background:var(--surface2)">
+          <td style="text-align:center;font-size:16px;padding-left:28px">${p.emoji}</td>
+          <td>
+            <div class="cell-name" style="padding-left:12px;border-left:2px solid var(--border2)">
+              <span>${p.name}</span>
+            </div>
+          </td>
+          <td><span class="cell-mono">${p.sku}</span></td>
+          <td><span class="tag tag-gray">${p.category}</span></td>
+          <td><span class="tag ${p.status==='active'?'tag-green':'tag-amber'}">${p.status}</span></td>
+          <td>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+              ${(Array.isArray(p.channels)&&p.channels.length>0)
+                ? p.channels.slice(0,3).map(ch=>{const c=CHANNELS.find(x=>x.name===ch);const col=c?c.color:'#6B6860';return `<span class="ptag" style="background:${col}18;color:${col};border-color:${col}44;font-size:10px"><span class="ptag-dot"></span>${ch}</span>`;}).join('')
+                : '<span style="font-size:11px;color:var(--txt4)">—</span>'}
+            </div>
+          </td>
+          <td>
+            <div class="comp-wrap">
+              <div class="comp-track"><div class="comp-bar" style="width:${p.completeness}%;background:${compColor(p.completeness)}"></div></div>
+              <span class="comp-pct" style="color:${compColor(p.completeness)}">${p.completeness}%</span>
+            </div>
+          </td>
+          <td style="color:${stockColor(p.stockQty)};font-weight:500">${p.stockQty}</td>
+          <td style="font-weight:500;color:var(--txt)">$${p.salesPrice.toFixed(2)}</td>
+          <td class="td-actions" onclick="event.stopPropagation()">
+            <button class="row-del" title="Delete product" onclick="confirmDelete(${p.id})">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 10h8l1-10"/></svg>
+            </button>
+          </td>
+        </tr>`).join('') : '';
+
+        return `
+        <tr class="grp-row${selectedGroupId===g.id?' selected':''}" data-gid="${g.id}" onclick="toggleGroupExpand('${g.id}')">
+          <td style="text-align:center;font-size:16px">${g.emoji}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="grp-chevron">${expanded?'▾':'▸'}</span>
+              <div>
+                <div style="font-weight:500;color:var(--txt)">${g.name}</div>
+                <div style="font-size:11px;color:var(--txt3);margin-top:1px">${g.skuPrefix}-* · ${item.variants.length} variants</div>
+              </div>
+            </div>
+          </td>
+          <td><span class="cell-mono" style="color:var(--txt3)">${g.skuPrefix}-*</span></td>
+          <td><span class="tag tag-gray">Group</span></td>
+          <td></td>
+          <td>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span title="Marketing ${cs.mPct}% filled" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:${cs.mPct>=80?'#16A34A':cs.mPct>0?'#D97706':'#C2BFB8'}">
+                <span style="width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block"></span>Mktg
+              </span>
+              <span title="Design: ${cs.dStatus}" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:${dCol}">
+                <span style="width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block"></span>Design
+              </span>
+              <span title="${g.faq.length} FAQ entries" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:${cs.hasFaq?'#16A34A':'#C2BFB8'}">
+                <span style="width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block"></span>Q&A
+              </span>
+            </div>
+          </td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td class="td-actions" onclick="event.stopPropagation()">
+            <button class="row-del" title="Open group panel" style="color:var(--accent)" onclick="openGroupPanel('${g.id}')">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 2h12v12H2z"/><path d="M6 2v12M2 6h4"/></svg>
+            </button>
+          </td>
+        </tr>
+        ${variantRows}`;
+      }
+      // standalone product
+      const p = item.product;
+      return `
+      <tr data-id="${p.id}" class="${selectedId===p.id?'selected':''}">
+        <td style="text-align:center;font-size:16px">${p.emoji}</td>
+        <td>
+          <div class="cell-name"><span>${p.name}</span></div>
+        </td>
+        <td><span class="cell-mono">${p.sku}</span></td>
+        <td><span class="tag tag-gray">${p.category}</span></td>
+        <td><span class="tag ${p.status==='active'?'tag-green':'tag-amber'}">${p.status}</span></td>
+        <td>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            ${(Array.isArray(p.channels)&&p.channels.length>0)
+              ? p.channels.slice(0,3).map(ch=>{const c=CHANNELS.find(x=>x.name===ch);const col=c?c.color:'#6B6860';return `<span class="ptag" style="background:${col}18;color:${col};border-color:${col}44;font-size:10px"><span class="ptag-dot"></span>${ch}</span>`;}).join('')
+              : '<span style="font-size:11px;color:var(--txt4)">—</span>'}
+          </div>
+        </td>
+        <td>
+          <div class="comp-wrap">
+            <div class="comp-track"><div class="comp-bar" style="width:${p.completeness}%;background:${compColor(p.completeness)}"></div></div>
+            <span class="comp-pct" style="color:${compColor(p.completeness)}">${p.completeness}%</span>
+          </div>
+        </td>
+        <td style="color:${stockColor(p.stockQty)};font-weight:500">${p.stockQty}</td>
+        <td style="font-weight:500;color:var(--txt)">$${p.salesPrice.toFixed(2)}</td>
+        <td class="td-actions" onclick="event.stopPropagation()">
+          <button class="row-del" title="Delete product" onclick="confirmDelete(${p.id})">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 10h8l1-10"/></svg>
+          </button>
+        </td>
+      </tr>`;
+    }).join('')}
     </tbody>
   </table>`;
+
   document.getElementById('tablePaneWrap').innerHTML = html;
-  document.querySelectorAll('.att-table tbody tr').forEach(row=>{
-    row.onclick = () => {
+  document.querySelectorAll('.att-table tbody tr[data-id]').forEach(row => {
+    row.onclick = (e) => {
+      if (e.target.closest('.td-actions')) return;
       const id = parseInt(row.dataset.id);
-      if(selectedId===id) { selectedId=null; closePanel(); } else { selectedId=id; openPanel(); }
+      selectedGroupId = null;
+      if (selectedId === id) { selectedId = null; closePanel(); } else { selectedId = id; openPanel(); }
       renderTable();
     };
   });
+}
+
+function toggleGroupExpand(gid) {
+  if (expandedGroups.has(gid)) {
+    expandedGroups.delete(gid);
+  } else {
+    expandedGroups.add(gid);
+  }
+  renderTable();
 }
 
 function setFilter(mode, el) {
@@ -1642,11 +1829,167 @@ function closePanel() {
   document.getElementById('recordPanel').innerHTML = '';
 }
 
+function openGroupPanel(gid) {
+  selectedGroupId = gid;
+  selectedId = null;
+  document.getElementById('recordPanel').classList.add('open');
+  renderGroupPanel();
+}
+
+function renderGroupPanel() {
+  const g = GROUPS.find(x => x.id === selectedGroupId);
+  if (!g) return;
+  const panel = document.getElementById('recordPanel');
+  const tabs = ['marketing', 'design', 'qa', 'media'];
+  const tabLabels = { marketing: 'Marketing', design: 'Design Brief', qa: 'Q & A', media: 'Shared Media' };
+  const cs = groupCompScore(g);
+  panel.innerHTML = `
+  <div class="rp-header" style="position:relative">
+    <button class="rp-close" onclick="selectedGroupId=null;closePanel();renderTable()">✕</button>
+    <div class="rp-emoji">${g.emoji}</div>
+    <div class="rp-name">${g.name}</div>
+    <div class="rp-sub">${g.skuPrefix}-* · ${g.variants.length} variants</div>
+    <div class="rp-platforms" style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+      <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${cs.mPct>=80?'var(--green-bg)':cs.mPct>0?'var(--amber-bg)':'var(--surface2)'};color:${cs.mPct>=80?'var(--green)':cs.mPct>0?'var(--amber)':'var(--txt3)'};border:1px solid ${cs.mPct>=80?'var(--green-bd)':cs.mPct>0?'var(--amber-bd)':'var(--border)'}">Marketing ${cs.mPct}%</span>
+      <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${g.designBrief.status==='complete'?'var(--green-bg)':g.designBrief.status==='none'?'var(--surface2)':'var(--blue-bg)'};color:${g.designBrief.status==='complete'?'var(--green)':g.designBrief.status==='none'?'var(--txt3)':'var(--blue)'};border:1px solid ${g.designBrief.status==='complete'?'var(--green-bd)':g.designBrief.status==='none'?'var(--border)':'var(--blue-bd)'}">Design: ${g.designBrief.status}</span>
+      <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${cs.hasFaq?'var(--green-bg)':'var(--surface2)'};color:${cs.hasFaq?'var(--green)':'var(--txt3)'};border:1px solid ${cs.hasFaq?'var(--green-bd)':'var(--border)'}">Q&A: ${g.faq.length}</span>
+    </div>
+  </div>
+  <div class="rp-tabs">
+    ${tabs.map(t => `<div class="rp-tab${groupDetailTab===t?' active':''}" onclick="groupDetailTab='${t}';renderGroupPanel()">${tabLabels[t]}</div>`).join('')}
+  </div>
+  <div class="rp-body">${renderGroupTab(g)}</div>
+  <div class="rp-actions">
+    <button class="rp-push rp-push-o" style="flex:1" onclick="persistGroup('${g.id}');toast('✓ Group saved')">💾 Save Group</button>
+  </div>`;
+}
+
+function gInput(label, val, onChange, placeholder='') {
+  return `<div class="att-field">
+    <div class="att-field-label">${label}</div>
+    <input style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:6px 8px;font-size:12px;color:var(--txt);outline:none;transition:border .15s"
+      value="${(val||'').replace(/"/g,'&quot;')}" placeholder="${placeholder}"
+      onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
+      oninput="${onChange}">
+  </div>`;
+}
+
+function gTextarea(label, val, onChange, placeholder='', rows=3) {
+  return `<div class="att-field">
+    <div class="att-field-label">${label}</div>
+    <textarea rows="${rows}" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:6px 8px;font-size:12px;color:var(--txt);outline:none;resize:vertical;transition:border .15s;font-family:inherit"
+      placeholder="${placeholder}"
+      onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
+      oninput="${onChange}">${(val||'').replace(/</g,'&lt;')}</textarea>
+  </div>`;
+}
+
+function renderGroupTab(g) {
+  const gid = g.id;
+
+  if (groupDetailTab === 'marketing') {
+    const m = g.marketing;
+    return `
+    <div class="rp-section">
+      <div class="rp-section-title">Core Copy</div>
+      ${gInput('Headline / Product Title', m.headline, `(function(v){const g=GROUPS.find(x=>x.id==='${gid}');if(g)g.marketing.headline=v;})(this.value)`, 'Short punchy headline…')}
+      ${gTextarea('Short Description', m.shortDesc, `(function(v){const g=GROUPS.find(x=>x.id==='${gid}');if(g)g.marketing.shortDesc=v;})(this.value)`, '1-2 sentence summary for listings…', 2)}
+      ${gTextarea('Long Description / Body', m.longDesc, `(function(v){const g=GROUPS.find(x=>x.id==='${gid}');if(g)g.marketing.longDesc=v;})(this.value)`, 'Full product description with features and benefits…', 5)}
+    </div>
+    <div class="rp-section">
+      <div class="rp-section-title">Selling Bullets (up to 5)</div>
+      ${(m.bullets||['','','','','']).map((b,i)=>gInput(`Bullet ${i+1}`, b, `(function(v){const g=GROUPS.find(x=>x.id==='${gid}');if(g){g.marketing.bullets=g.marketing.bullets||['','','','',''];g.marketing.bullets[${i}]=v;}})(this.value)`, `Key benefit ${i+1}…`)).join('')}
+    </div>
+    <div class="rp-section">
+      <div class="rp-section-title">Audience & Strategy</div>
+      ${gInput('Target Audience', m.targetAudience, `(function(v){const g=GROUPS.find(x=>x.id==='${gid}');if(g)g.marketing.targetAudience=v;})(this.value)`, 'Who buys this? (e.g. sign shops, retail stores…)')}
+      ${gTextarea('Use Cases / Applications', m.useCases, `(function(v){const g=GROUPS.find(x=>x.id==='${gid}');if(g)g.marketing.useCases=v;})(this.value)`, 'Where and how is this used?…', 2)}
+      ${gInput('Campaign Tags', m.campaignTags, `(function(v){const g=GROUPS.find(x=>x.id==='${gid}');if(g)g.marketing.campaignTags=v;})(this.value)`, 'summer-promo, new-product, top-seller…')}
+    </div>
+    <div class="rp-section">
+      <div class="rp-section-title">SEO</div>
+      ${gInput('SEO Title', m.seoTitle, `(function(v){const g=GROUPS.find(x=>x.id==='${gid}');if(g)g.marketing.seoTitle=v;})(this.value)`, 'SEO optimized title…')}
+      ${gTextarea('SEO Description', m.seoDescription, `(function(v){const g=GROUPS.find(x=>x.id==='${gid}');if(g)g.marketing.seoDescription=v;})(this.value)`, 'Meta description (under 160 chars)…', 2)}
+    </div>`;
+  }
+
+  if (groupDetailTab === 'design') {
+    const d = g.designBrief;
+    const statuses = ['none','requested','in_progress','approved','complete'];
+    const statusColors = {none:'var(--txt3)',requested:'var(--amber)',in_progress:'var(--blue)',approved:'#7C3AED',complete:'var(--green)'};
+    return `
+    <div class="rp-section">
+      <div class="rp-section-title">Brief Status</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+        ${statuses.map(s=>`<button onclick="(function(){const g=GROUPS.find(x=>x.id==='${gid}');if(g)g.designBrief.status='${s}';renderGroupPanel();})()" style="padding:4px 12px;border-radius:20px;border:1px solid ${d.status===s?statusColors[s]:'var(--border)'};background:${d.status===s?statusColors[s]+'18':'transparent'};color:${d.status===s?statusColors[s]:'var(--txt3)'};font-size:11px;font-weight:500;cursor:pointer;text-transform:capitalize">${s.replace('_',' ')}</button>`).join('')}
+      </div>
+    </div>
+    <div class="rp-section">
+      <div class="rp-section-title">Brief Details</div>
+      ${gTextarea('Design Brief', d.brief, `(function(v){const g=GROUPS.find(x=>x.id==='${gid}');if(g)g.designBrief.brief=v;})(this.value)`, 'Describe the design goals, style, tone, reference materials…', 5)}
+      ${gTextarea('Required Deliverables', d.deliverables, `(function(v){const g=GROUPS.find(x=>x.id==='${gid}');if(g)g.designBrief.deliverables=v;})(this.value)`, 'e.g. Amazon main image 1500×1500, banner 728×90…', 3)}
+    </div>
+    <div class="rp-section">
+      <div class="rp-section-title">Assignment</div>
+      ${gInput('Designer', d.designer, `(function(v){const g=GROUPS.find(x=>x.id==='${gid}');if(g)g.designBrief.designer=v;})(this.value)`, 'Designer name or email…')}
+      <div class="att-field">
+        <div class="att-field-label">Due Date</div>
+        <input type="date" value="${d.dueDate||''}" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:6px 8px;font-size:12px;color:var(--txt);outline:none"
+          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
+          onchange="(function(v){const g=GROUPS.find(x=>x.id==='${gid}');if(g)g.designBrief.dueDate=v;})(this.value)">
+      </div>
+      ${gTextarea('Notes', d.notes, `(function(v){const g=GROUPS.find(x=>x.id==='${gid}');if(g)g.designBrief.notes=v;})(this.value)`, 'Additional notes for the designer…', 3)}
+    </div>`;
+  }
+
+  if (groupDetailTab === 'qa') {
+    return `
+    <div class="rp-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="rp-section-title" style="margin:0">Customer Q & A</div>
+        <button class="btn btn-secondary btn-sm" onclick="(function(){const g=GROUPS.find(x=>x.id==='${gid}');if(g){g.faq.push({q:'',a:''});renderGroupPanel();}})()">+ Add Question</button>
+      </div>
+      ${g.faq.length === 0 ? `<div style="text-align:center;padding:24px;color:var(--txt3);font-size:12px">No Q&A yet. Add common customer questions and their answers.</div>` : ''}
+      ${g.faq.map((item, i) => `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--rl);padding:12px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:11px;font-weight:500;color:var(--txt3)">Q${i+1}</span>
+          <button onclick="(function(){const g=GROUPS.find(x=>x.id==='${gid}');if(g){g.faq.splice(${i},1);renderGroupPanel();}})()" style="background:none;border:none;color:var(--txt3);cursor:pointer;font-size:12px;padding:2px 4px" title="Remove">✕</button>
+        </div>
+        <textarea rows="2" placeholder="Customer question…" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:6px 8px;font-size:12px;color:var(--txt);outline:none;resize:vertical;font-family:inherit;margin-bottom:6px"
+          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
+          oninput="(function(v){const g=GROUPS.find(x=>x.id==='${gid}');if(g&&g.faq[${i}])g.faq[${i}].q=v;})(this.value)">${(item.q||'').replace(/</g,'&lt;')}</textarea>
+        <textarea rows="3" placeholder="Answer…" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:6px 8px;font-size:12px;color:var(--txt);outline:none;resize:vertical;font-family:inherit"
+          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
+          oninput="(function(v){const g=GROUPS.find(x=>x.id==='${gid}');if(g&&g.faq[${i}])g.faq[${i}].a=v;})(this.value)">${(item.a||'').replace(/</g,'&lt;')}</textarea>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  if (groupDetailTab === 'media') {
+    // Pull shared media from first variant that has it, show all variant images
+    const variants = g.variants.map(id => PRODUCTS.find(p => p.id === id)).filter(Boolean);
+    return `
+    <div class="rp-section">
+      <div class="rp-section-title">Shared Documents</div>
+      <div style="font-size:11px;color:var(--txt3);margin-bottom:10px">Set these on individual variants in the Media tab</div>
+      ${variants.map(p => p.pdfUrl ? `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:11px;color:var(--txt3);min-width:80px">${p.sku}</span><a href="${p.pdfUrl}" target="_blank" class="media-file-badge">📄 PDF</a></div>` : '').filter(Boolean).join('') || '<div style="color:var(--txt3);font-size:12px">No PDFs uploaded on variants yet</div>'}
+    </div>
+    <div class="rp-section" style="margin-top:12px">
+      <div class="rp-section-title">Variant Images</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-top:8px">
+        ${variants.map(p => p.imageUrl ? `<div style="text-align:center"><img src="${p.imageUrl}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;border:1px solid var(--border)" onerror="this.style.display='none'" loading="lazy"><div style="font-size:10px;color:var(--txt3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.sku}</div></div>` : '').filter(Boolean).join('') || '<div style="color:var(--txt3);font-size:12px">No images on variants yet</div>'}
+      </div>
+    </div>`;
+  }
+  return '';
+}
+
 function renderPanel() {
   const p = PRODUCTS.find(x=>x.id===selectedId);
   if(!p) return;
   const panel = document.getElementById('recordPanel');
-  const tabs = ['fields','price','physical','channels','media'];
+  const tabs = ['overview','sales','physical','inventory','accounting','media'];
   const pChannels = Array.isArray(p.channels) ? p.channels : [];
   panel.innerHTML = `
   <div class="rp-header" style="position:relative">
@@ -1666,7 +2009,7 @@ function renderPanel() {
     ${p.missing.length>0?`<div style="margin-top:6px"><span class="tag tag-amber">⚠ ${p.missing.length} missing field${p.missing.length>1?'s':''}</span></div>`:'<span class="tag tag-green">✓ Complete</span>'}
   </div>
   <div class="rp-tabs">
-    ${tabs.map(t=>`<div class="rp-tab${detailTab===t?' active':''}" onclick="detailTab='${t}';renderPanel()">${t.charAt(0).toUpperCase()+t.slice(1)}</div>`).join('')}
+    ${tabs.map(t=>{const labels={overview:'Overview',sales:'Sales',physical:'Physical',inventory:'Inventory',accounting:'Accounting',media:'Media'};return `<div class="rp-tab${detailTab===t?' active':''}" onclick="detailTab='${t}';renderPanel()">${labels[t]||t}</div>`;}).join('')}
   </div>
   <div class="rp-body">${renderPanelTab(p)}</div>
   <div class="rp-actions">
@@ -1688,7 +2031,7 @@ function aField(label, val, empty=false) {
 }
 
 function renderPanelTab(p) {
-  if(detailTab==='fields') return `
+  if(detailTab==='overview') return `
     <div class="rp-section"><div class="rp-section-title">Identification</div>
       ${aField('Name',p.name)}
       ${aField('SKU',p.sku)}
@@ -1720,9 +2063,10 @@ function renderPanelTab(p) {
       ${aField('Warehouse',p.warehouseName)}
     </div>`;
 
-  if(detailTab==='price') {
+  if(detailTab==='sales') {
     const margin = p.costPrice>0?Math.round((1-p.costPrice/p.salesPrice)*100):0;
     const markup = p.costPrice>0?Math.round((p.salesPrice/p.costPrice-1)*100):0;
+    const pChs = Array.isArray(p.channels) ? p.channels : [];
     return `
     <div class="rp-section"><div class="rp-section-title">Pricing</div>
       ${aField('Sales Price','$'+p.salesPrice.toFixed(2))}
@@ -1731,16 +2075,28 @@ function renderPanelTab(p) {
       ${aField('Selling Price (Zoho)',p.sellingPriceZ?'$'+p.sellingPriceZ.toFixed(3):'')}
       ${aField('Purchase Price (Zoho)',p.purchasePriceZ?'$'+p.purchasePriceZ.toFixed(2):'')}
       ${aField('Tax Rate',p.taxRate)}
-      ${aField('Currency','USD')}
     </div>
     <div class="margin-card">
       <div class="margin-item"><div class="margin-val" style="color:#16A34A">${margin}%</div><div class="margin-lbl">Margin</div></div>
       <div class="margin-item"><div class="margin-val" style="color:var(--blue)">${markup}%</div><div class="margin-lbl">Markup</div></div>
       <div class="margin-item"><div class="margin-val" style="color:var(--txt)">$${(p.salesPrice-p.costPrice).toFixed(2)}</div><div class="margin-lbl">Profit</div></div>
     </div>
-    <div class="rp-section" style="margin-top:16px"><div class="rp-section-title">Accounting</div>
-      ${aField('Sales Account','400-Sales')}
-      ${aField('Purchase Account','500-Purchases')}
+    <div class="rp-section" style="margin-top:16px">
+      <div class="rp-section-title">Sales Channels</div>
+      ${CHANNELS.map(ch=>`
+      <div class="plat-toggle-row">
+        <div class="plat-toggle-info">
+          <span class="plat-toggle-icon">${ch.icon}</span>
+          <div>
+            <div class="plat-toggle-name">${ch.name}</div>
+            <div class="plat-toggle-sub" style="color:${ch.color}">${pChs.includes(ch.name)?'Listed':'Not listed'}</div>
+          </div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" ${pChs.includes(ch.name)?'checked':''} onchange="toggleChannel(${p.id},'${ch.name.replace(/'/g,"\\'")}',this.checked)">
+          <span class="toggle-track"></span>
+        </label>
+      </div>`).join('')}
     </div>`;
   }
 
@@ -1769,6 +2125,21 @@ function renderPanelTab(p) {
       ${aField('SEO Title',p.seoTitle)}
       ${aField('SEO Desc',p.seoDesc)}
       ${aField('Image URL',p.imageUrl)}
+    </div>`;
+
+  if(detailTab==='inventory') return `
+    <div class="rp-section"><div class="rp-section-title">Stock</div>
+      ${aField('Stock Qty',p.stockQty)}
+      ${aField('Reorder Point',p.reorderPoint)}
+      ${aField('Reorder Level (Z)',p.reOrderLevel)}
+      ${aField('MOQ',p.moq)}
+      ${aField('Lead Time',p.leadTime)}
+      ${aField('Inventory Method',p.inventoryMethod)}
+    </div>
+    <div class="rp-section"><div class="rp-section-title">Location</div>
+      ${aField('Location Name',p.locationName)}
+      ${aField('Warehouse Name',p.warehouseName)}
+      ${aField('Preferred Vendor',p.preferredVendor)}
     </div>
     <div class="rp-section"><div class="rp-section-title">Packaging</div>
       ${aField('Package Height',p.pkgHeight)}
@@ -1777,43 +2148,22 @@ function renderPanelTab(p) {
       ${aField('Package Weight (Z)',p.pkgWeight||'')}
     </div>`;
 
-  if(detailTab==='channels') {
-    const pChs = Array.isArray(p.channels) ? p.channels : [];
+  if(detailTab==='accounting') {
+    const margin = p.costPrice>0?Math.round((1-p.costPrice/p.salesPrice)*100):0;
     return `
-    <div class="rp-section">
-      <div class="rp-section-title">Sales Channels</div>
-      ${CHANNELS.map(ch=>`
-      <div class="plat-toggle-row">
-        <div class="plat-toggle-info">
-          <span class="plat-toggle-icon">${ch.icon}</span>
-          <div>
-            <div class="plat-toggle-name">${ch.name}</div>
-            <div class="plat-toggle-sub" style="color:${ch.color}">${pChs.includes(ch.name)?'Listed':'Not listed'}</div>
-          </div>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" ${pChs.includes(ch.name)?'checked':''} onchange="toggleChannel(${p.id},'${ch.name.replace(/'/g,"\\'")}',this.checked)">
-          <span class="toggle-track"></span>
-        </label>
-      </div>`).join('')}
+    <div class="rp-section"><div class="rp-section-title">Cost & Margin</div>
+      ${aField('Sales Price','$'+p.salesPrice.toFixed(2))}
+      ${aField('Cost Price (COGS)','$'+p.costPrice.toFixed(2))}
+      ${aField('Gross Margin',margin+'%')}
+      ${aField('Profit per Unit','$'+(p.salesPrice-p.costPrice).toFixed(2))}
+      ${aField('Tax Rate',p.taxRate)}
     </div>
-    <div class="rp-section">
-      <div class="rp-section-title">ERP Integrations</div>
-      ${[
-        {id:'odoo',    label:'Odoo',    icon:'🟣', checked:p.syncOdoo,    key:'syncOdoo'},
-        {id:'zoho',    label:'Zoho',    icon:'🔴', checked:p.syncZoho,    key:'syncZoho'},
-        {id:'shopify', label:'Shopify', icon:'🟢', checked:p.syncShopify, key:'syncShopify'},
-      ].map(pl=>`
-      <div class="plat-toggle-row">
-        <div class="plat-toggle-info">
-          <span class="plat-toggle-icon">${pl.icon}</span>
-          <div><div class="plat-toggle-name">${pl.label}</div></div>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" ${pl.checked?'checked':''} onchange="updateProductField(${p.id},'${pl.key}',this.checked);renderTable()">
-          <span class="toggle-track"></span>
-        </label>
-      </div>`).join('')}
+    <div class="rp-section"><div class="rp-section-title">Vendor</div>
+      ${aField('Preferred Vendor',p.preferredVendor)}
+      ${aField('Vendor SKU',p.vendorSku)}
+      ${aField('Purchase Description',p.purchaseDesc)}
+    </div>
+    <div class="rp-section"><div class="rp-section-title">Platform IDs</div>
       ${[
         {label:'Odoo ID',           key:'odooId',     val:p.odooId},
         {label:'Zoho Item ID',      key:'zohoItemId', val:p.zohoItemId},
@@ -1829,7 +2179,26 @@ function renderPanelTab(p) {
             onblur="this.style.borderColor='var(--border)'">
         </div>
       </div>`).join('')}
-    </div>`;}
+      <div style="margin-top:12px">
+        ${[
+          {id:'odoo',    label:'Odoo',    icon:'🟣', checked:p.syncOdoo,    key:'syncOdoo'},
+          {id:'zoho',    label:'Zoho',    icon:'🔴', checked:p.syncZoho,    key:'syncZoho'},
+          {id:'shopify', label:'Shopify', icon:'🟢', checked:p.syncShopify, key:'syncShopify'},
+        ].map(pl=>`
+        <div class="plat-toggle-row">
+          <div class="plat-toggle-info">
+            <span class="plat-toggle-icon">${pl.icon}</span>
+            <div><div class="plat-toggle-name">${pl.label} Sync</div></div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" ${pl.checked?'checked':''} onchange="updateProductField(${p.id},'${pl.key}',this.checked);renderTable()">
+            <span class="toggle-track"></span>
+          </label>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
 
   if(detailTab==='media') {
     const mediaField = (label, key, val, isFile=false) => {
@@ -2633,6 +3002,7 @@ async function autoLoadNotion(silent = false) {
     if (!allPages.length) return false;
 
     PRODUCTS = allPages.map((page, i) => mapNotionPageToProduct(page, i));
+    buildGroups();
     if (countEl) countEl.textContent = PRODUCTS.length;
     schedulePersist();
     if (currentView === 'catalog') renderTable();
