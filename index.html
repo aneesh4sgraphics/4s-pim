@@ -286,6 +286,28 @@ button { cursor: pointer; }
 .ptag-s { background: var(--shopify-bg); color: var(--shopify-tx); border-color: var(--shopify-bd); }
 .ptag-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
+/* Media tab */
+.media-field-row { margin-bottom: 14px; }
+.media-field-lbl { font-size: 11px; font-weight: 500; color: var(--txt3); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 5px; }
+.media-url-input {
+  width: 100%; padding: 7px 10px; border: 1px solid var(--border);
+  border-radius: var(--r); background: var(--surface); color: var(--txt);
+  font-size: 12px; font-family: ui-monospace, monospace; outline: none;
+  transition: border-color .12s;
+}
+.media-url-input:focus { border-color: var(--accent); }
+.media-img-preview {
+  width: 100%; aspect-ratio: 4/3; object-fit: contain;
+  border: 1px solid var(--border); border-radius: var(--r);
+  background: var(--surface2); margin-top: 6px; display: block;
+}
+.media-file-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: var(--r);
+  background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-bd);
+  font-size: 11px; font-weight: 500; margin-top: 5px; text-decoration: none;
+}
+
 /* Platform toggle row */
 .plat-toggle-row {
   display: flex; align-items: center; justify-content: space-between;
@@ -1346,6 +1368,7 @@ const CHANNELS = [
   {name:'4S Website',icon:'🌐',color:'#2563EB',products:38,complete:89,live:34,on:true},
   {name:'B2B Portal',icon:'🏭',color:'#16A34A',products:47,complete:94,live:44,on:true},
   {name:'Amazon',icon:'📦',color:'#D97706',products:22,complete:78,live:18,on:true},
+  {name:'eBay',icon:'🛍️',color:'#E53238',products:0,complete:0,live:0,on:true},
   {name:'LatAm Distributor',icon:'🌎',color:'#7C3AED',products:15,complete:65,live:9,on:true},
   {name:'Honduras Direct',icon:'🔗',color:'#DC2626',products:8,complete:71,live:6,on:false},
 ];
@@ -1515,10 +1538,9 @@ function renderTable() {
       <td><span class="tag ${p.status==='active'?'tag-green':'tag-amber'}">${p.status}</span></td>
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
-          ${p.syncOdoo?   '<span class="ptag ptag-o"><span class="ptag-dot"></span>Odoo</span>':''}
-          ${p.syncZoho?   '<span class="ptag ptag-z"><span class="ptag-dot"></span>Zoho</span>':''}
-          ${p.syncShopify?'<span class="ptag ptag-s"><span class="ptag-dot"></span>Shopify</span>':''}
-          ${!p.syncOdoo&&!p.syncZoho&&!p.syncShopify?'<span style="font-size:11px;color:var(--txt4)">—</span>':''}
+          ${(Array.isArray(p.channels)&&p.channels.length>0)
+            ? p.channels.slice(0,3).map(ch=>{const c=CHANNELS.find(x=>x.name===ch);const col=c?c.color:'#6B6860';return `<span class="ptag" style="background:${col}18;color:${col};border-color:${col}44;font-size:10px"><span class="ptag-dot"></span>${ch}</span>`;}).join('')
+            : '<span style="font-size:11px;color:var(--txt4)">—</span>'}
         </div>
       </td>
       <td>
@@ -1602,7 +1624,8 @@ function renderPanel() {
   const p = PRODUCTS.find(x=>x.id===selectedId);
   if(!p) return;
   const panel = document.getElementById('recordPanel');
-  const tabs = ['fields','price','physical','sync'];
+  const tabs = ['fields','price','physical','channels','media'];
+  const pChannels = Array.isArray(p.channels) ? p.channels : [];
   panel.innerHTML = `
   <div class="rp-header" style="position:relative">
     <button class="rp-close" onclick="closePanel();renderTable()">✕</button>
@@ -1610,9 +1633,13 @@ function renderPanel() {
     <div class="rp-name">${p.name}</div>
     <div class="rp-sub">${p.sku} · ${p.category}</div>
     <div class="rp-platforms">
-      ${p.syncOdoo?   `<span class="ptag ptag-o"><span class="ptag-dot"></span>Odoo ${p.odooId||''}</span>`:   '<span class="tag tag-gray" style="font-size:10px;color:var(--txt4)">Odoo—</span>'}
-      ${p.syncZoho?   `<span class="ptag ptag-z"><span class="ptag-dot"></span>Zoho ${p.zohoItemId||''}</span>`: '<span class="tag tag-gray" style="font-size:10px;color:var(--txt4)">Zoho—</span>'}
-      ${p.syncShopify?`<span class="ptag ptag-s"><span class="ptag-dot"></span>Shopify</span>`:                   '<span class="tag tag-gray" style="font-size:10px;color:var(--txt4)">Shopify—</span>'}
+      ${pChannels.length > 0
+        ? pChannels.map(ch => {
+            const c = CHANNELS.find(x=>x.name===ch);
+            const col = c ? c.color : '#6B6860';
+            return `<span class="ptag" style="background:${col}18;color:${col};border-color:${col}44"><span class="ptag-dot"></span>${ch}</span>`;
+          }).join('')
+        : '<span style="font-size:11px;color:var(--txt4)">No channels</span>'}
     </div>
     ${p.missing.length>0?`<div style="margin-top:6px"><span class="tag tag-amber">⚠ ${p.missing.length} missing field${p.missing.length>1?'s':''}</span></div>`:'<span class="tag tag-green">✓ Complete</span>'}
   </div>
@@ -1706,38 +1733,49 @@ function renderPanelTab(p) {
       ${aField('Image URL',p.imageUrl)}
     </div>`;
 
-  if(detailTab==='sync') {
-    const platforms = [
-      {id:'odoo',    label:'Odoo',    icon:'🟣', sub:'Inventory · XML-RPC',  checked:p.syncOdoo,    pidKey:'odooId',     pidVal:p.odooId},
-      {id:'zoho',    label:'Zoho',    icon:'🔴', sub:'Inventory · REST API', checked:p.syncZoho,    pidKey:'zohoItemId', pidVal:p.zohoItemId},
-      {id:'shopify', label:'Shopify', icon:'🟢', sub:'Admin REST · 2024-04', checked:p.syncShopify, pidKey:'shopifyId',  pidVal:p.shopifyId},
-    ];
+  if(detailTab==='channels') {
+    const pChs = Array.isArray(p.channels) ? p.channels : [];
     return `
     <div class="rp-section">
-      <div class="rp-section-title">Platform Sync</div>
-      ${platforms.map(pl=>`
+      <div class="rp-section-title">Sales Channels</div>
+      ${CHANNELS.map(ch=>`
       <div class="plat-toggle-row">
         <div class="plat-toggle-info">
-          <span class="plat-toggle-icon">${pl.icon}</span>
+          <span class="plat-toggle-icon">${ch.icon}</span>
           <div>
-            <div class="plat-toggle-name">${pl.label}</div>
-            <div class="plat-toggle-sub">${pl.pidVal ? pl.pidVal : pl.sub}</div>
+            <div class="plat-toggle-name">${ch.name}</div>
+            <div class="plat-toggle-sub" style="color:${ch.color}">${pChs.includes(ch.name)?'Listed':'Not listed'}</div>
           </div>
         </div>
         <label class="toggle-switch">
-          <input type="checkbox" ${pl.checked?'checked':''} onchange="toggleSync(${p.id},'${pl.id}',this.checked)">
+          <input type="checkbox" ${pChs.includes(ch.name)?'checked':''} onchange="toggleChannel(${p.id},'${ch.name.replace(/'/g,"\\'")}',this.checked)">
           <span class="toggle-track"></span>
         </label>
       </div>`).join('')}
     </div>
     <div class="rp-section">
-      <div class="rp-section-title">Platform IDs</div>
+      <div class="rp-section-title">ERP Integrations</div>
       ${[
-        {label:'Odoo ID',          key:'odooId',     val:p.odooId},
-        {label:'Zoho Item ID',     key:'zohoItemId', val:p.zohoItemId},
-        {label:'Shopify Product ID',key:'shopifyId', val:p.shopifyId},
+        {id:'odoo',    label:'Odoo',    icon:'🟣', checked:p.syncOdoo,    key:'syncOdoo'},
+        {id:'zoho',    label:'Zoho',    icon:'🔴', checked:p.syncZoho,    key:'syncZoho'},
+        {id:'shopify', label:'Shopify', icon:'🟢', checked:p.syncShopify, key:'syncShopify'},
+      ].map(pl=>`
+      <div class="plat-toggle-row">
+        <div class="plat-toggle-info">
+          <span class="plat-toggle-icon">${pl.icon}</span>
+          <div><div class="plat-toggle-name">${pl.label}</div></div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" ${pl.checked?'checked':''} onchange="updateProductField(${p.id},'${pl.key}',this.checked);renderTable()">
+          <span class="toggle-track"></span>
+        </label>
+      </div>`).join('')}
+      ${[
+        {label:'Odoo ID',           key:'odooId',     val:p.odooId},
+        {label:'Zoho Item ID',      key:'zohoItemId', val:p.zohoItemId},
+        {label:'Shopify Product ID',key:'shopifyId',  val:p.shopifyId},
       ].map(f=>`
-      <div class="att-field">
+      <div class="att-field" style="margin-top:4px">
         <div class="att-field-label">${f.label}</div>
         <div class="att-field-val">
           <input style="background:none;border:none;border-bottom:1px solid var(--border);padding:2px 4px;font-size:12px;color:var(--txt);width:100%;outline:none;font-family:ui-monospace,monospace"
@@ -1749,7 +1787,54 @@ function renderPanelTab(p) {
       </div>`).join('')}
     </div>`;}
 
+  if(detailTab==='media') {
+    const mediaField = (label, key, val, isFile=false) => {
+      const isImg = !isFile && val && /\.(jpe?g|png|gif|webp|svg)/i.test(val);
+      return `<div class="media-field-row">
+        <div class="media-field-lbl">${label}</div>
+        <input class="media-url-input" type="url" value="${(val||'').replace(/"/g,'&quot;')}" placeholder="Paste URL…"
+          onchange="updateProductField(${p.id},'${key}',this.value);renderPanel()"
+          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+        ${isImg ? `<img class="media-img-preview" src="${val}" onerror="this.style.display='none'" loading="lazy">` : ''}
+        ${isFile && val ? `<a class="media-file-badge" href="${val}" target="_blank">📄 Open file</a>` : ''}
+      </div>`;
+    };
+    return `
+    <div class="rp-section">
+      <div class="rp-section-title">Documents</div>
+      ${mediaField('Product PDF / Spec Sheet','pdfUrl',p.pdfUrl,true)}
+      ${mediaField('Technical Data File','techDataUrl',p.techDataUrl,true)}
+    </div>
+    <div class="rp-section">
+      <div class="rp-section-title">Product Images</div>
+      ${mediaField('Primary Image','imageUrl',p.imageUrl)}
+      ${mediaField('Secondary Image','image2Url',p.image2Url)}
+      ${mediaField('Tertiary Image','image3Url',p.image3Url)}
+    </div>`;}
+
   return '';
+}
+
+function toggleChannel(id, channelName, val) {
+  const p = PRODUCTS.find(x => x.id === id);
+  if (!p) return;
+  if (!Array.isArray(p.channels)) p.channels = [];
+  if (val) {
+    if (!p.channels.includes(channelName)) p.channels.push(channelName);
+  } else {
+    p.channels = p.channels.filter(c => c !== channelName);
+  }
+  schedulePersist();
+  renderTable();
+  // refresh channel color badges in panel header
+  const rpp = document.querySelector('.rp-platforms');
+  if (rpp) rpp.innerHTML = p.channels.length > 0
+    ? p.channels.map(ch => {
+        const c = CHANNELS.find(x=>x.name===ch);
+        const col = c ? c.color : '#6B6860';
+        return `<span class="ptag" style="background:${col}18;color:${col};border-color:${col}44"><span class="ptag-dot"></span>${ch}</span>`;
+      }).join('')
+    : '<span style="font-size:11px;color:var(--txt4)">No channels</span>';
 }
 
 function toggleSync(id, plat, val) {
@@ -2148,7 +2233,7 @@ function doImport() {
     'Origin of Goods':'originOfGoods','HS Code':'hsCode',
   };
   const newPs = csvRows.map((row,ri)=>{
-    const base={id:Date.now()+ri,emoji:'📦',status:'draft',completeness:55,missing:[],syncOdoo:false,syncZoho:false,syncShopify:false,salesPrice:0,costPrice:0,stockQty:0,reorderPoint:0,tags:[]};
+    const base={id:Date.now()+ri,emoji:'📦',status:'draft',completeness:55,missing:[],syncOdoo:false,syncZoho:false,syncShopify:false,channels:[],pdfUrl:'',techDataUrl:'',image2Url:'',image3Url:'',salesPrice:0,costPrice:0,stockQty:0,reorderPoint:0,tags:[]};
     csvHeaders.forEach((h,i)=>{
       const pf=csvMappings[h];
       if(pf&&pf!=='— Ignore —'){const k=keyMap[pf]||pf.toLowerCase().replace(/ /g,'');base[k]=row[i]||'';}
@@ -2402,6 +2487,8 @@ function mapNotionPageToProduct(page, index) {
     zohoItemId:    get('SKU (Zoho)'),
     shopifyId:     '',
     syncOdoo: false, syncZoho: false, syncShopify: false,
+    channels: [],
+    pdfUrl: '', techDataUrl: '', image2Url: '', image3Url: '',
     status:        'active',
     completeness,
     missing,
