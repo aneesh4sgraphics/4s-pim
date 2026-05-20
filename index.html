@@ -627,6 +627,40 @@ tr:hover .row-del { opacity: 1; }
 .conf-mini-track { width: 44px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
 .conf-mini-fill  { height: 100%; border-radius: 2px; }
 
+/* ── IMPORT TABS ─────────────────────────────── */
+.import-tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+.import-tab {
+  padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer;
+  border-bottom: 2px solid transparent; color: var(--txt3);
+  transition: color .1s, border-color .1s; margin-bottom: -1px;
+  display: flex; align-items: center; gap: 6px;
+}
+.import-tab.active { color: var(--txt); border-bottom-color: var(--accent); }
+.import-tab:hover:not(.active) { color: var(--txt); }
+
+/* ── NOTION FORM ─────────────────────────────── */
+.notion-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--rxl); padding: 22px 24px; margin-bottom: 14px;
+}
+.notion-card-title { font-size: 14px; font-weight: 600; color: var(--txt); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.notion-card-sub { font-size: 12px; color: var(--txt3); margin-bottom: 18px; line-height: 1.5; }
+.notion-field-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.notion-field-lbl { font-size: 12px; font-weight: 500; color: var(--txt2); display: flex; align-items: center; gap: 6px; }
+.notion-field-hint { font-size: 11px; color: var(--txt4); margin-top: 2px; }
+.notion-input {
+  width: 100%; padding: 8px 12px; border: 1px solid var(--border);
+  border-radius: var(--r); background: var(--surface); color: var(--txt);
+  font-size: 13px; outline: none; transition: border-color .12s;
+  font-family: 'Geist Mono', 'Menlo', monospace;
+}
+.notion-input:focus { border-color: var(--accent); }
+.notion-steps { background: var(--surface2); border-radius: var(--r); padding: 12px 14px; margin-bottom: 16px; }
+.notion-step { display: flex; gap: 10px; align-items: flex-start; font-size: 12px; color: var(--txt2); line-height: 1.5; margin-bottom: 6px; }
+.notion-step:last-child { margin-bottom: 0; }
+.notion-step-num { min-width: 18px; height: 18px; border-radius: 50%; background: var(--accent-bg); color: var(--accent); font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.notion-warn { display: flex; gap: 10px; align-items: flex-start; background: var(--amber-bg); border: 1px solid var(--amber-bd); border-radius: var(--r); padding: 10px 12px; font-size: 12px; color: var(--amber); margin-bottom: 16px; line-height: 1.5; }
+
 /* ══════════════════════════════════════════════
    SYNC VIEW
 ══════════════════════════════════════════════ */
@@ -852,7 +886,7 @@ tr:hover .row-del { opacity: 1; }
         <span class="nav-icon">
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10V3M5.5 7.5L8 10l2.5-2.5"/><path d="M3 13h10"/></svg>
         </span>
-        <span class="nav-item-label">CSV Import</span>
+        <span class="nav-item-label">Import</span>
       </div>
       <div class="nav-item" id="nav-sync" onclick="goTo('sync',this)">
         <span class="nav-icon">
@@ -930,6 +964,7 @@ tr:hover .row-del { opacity: 1; }
       </button>
       <button class="btn btn-secondary btn-sm" onclick="exportCSV()">↑ Export CSV</button>
       <button class="btn btn-secondary btn-sm" onclick="exportBackup()" title="Save full database as JSON backup">💾 Backup</button>
+      <button class="btn btn-secondary btn-sm" id="notion-sync-btn" onclick="syncFromNotion()" title="Re-sync products from Notion database" style="display:none">⟳ Sync Notion</button>
       <button class="btn btn-secondary btn-sm" onclick="importBackup()" title="Restore from a JSON backup file">↩ Restore</button>
       <button class="btn btn-primary btn-sm" onclick="openAddModal()">+ New product</button>
     </div>
@@ -997,8 +1032,8 @@ tr:hover .row-del { opacity: 1; }
   <!-- ════ IMPORT VIEW ════ -->
   <div class="view" id="view-import">
     <div class="view-body">
-      <div class="page-title">CSV Import</div>
-      <div class="page-sub">Import from Odoo, Zoho Inventory, or Shopify export — auto-detected</div>
+      <div class="page-title">Import</div>
+      <div class="page-sub">Import products from a file or directly from a Notion database</div>
       <div id="importContent" style="max-width:880px"></div>
     </div>
   </div>
@@ -1277,15 +1312,8 @@ tr:hover .row-del { opacity: 1; }
 // ════════════════════════════════════════════════════
 // DATA
 // ════════════════════════════════════════════════════
-let PRODUCTS = [
-  {id:1,emoji:'📄',name:'Graffiti Waterproof Synthetic Paper 8mil',sku:'GWS-8MIL-24x150',barcode:'845123001234',ean:'',mpn:'GRF-WS8',vendorSku:'GRF-WS8-24',category:'Synthetic Paper',productType:'storable',brand:'Graffiti',supplier:'Graffiti Media Inc.',salesPrice:187.50,costPrice:112.00,comparePrice:210.00,taxRate:'7%',uom:'Roll',moq:'1',leadTime:'3-5 days',stockQty:42,reorderPoint:5,width:'24"',length:'150ft',thickness:'8mil',weight:'5.2',weightUnit:'lb',gsm:'120',finish:'Matte',substrate:'PP Synthetic',printableSides:'Both',compatibility:'Solvent / Latex',waterproof:'Yes',tags:['synthetic','waterproof','graffiti'],collections:'Synthetic Papers,Featured',seoTitle:'Graffiti Waterproof Synthetic Paper 8mil | 4S Graphics',seoDesc:'Premium 8mil waterproof synthetic paper.',description:'<p>8mil waterproof synthetic paper for demanding wide format applications.</p>',imageUrl:'',odooId:'P-1042',zohoItemId:'',shopifyId:'8834112',syncOdoo:true,syncZoho:false,syncShopify:true,status:'active',completeness:94,missing:['EAN','Volume','Zoho Item ID']},
-  {id:2,emoji:'📄',name:'Graffiti Synthetic Paper 5mil Gloss',sku:'GWS-5MIL-36x150',barcode:'845123001235',ean:'',mpn:'GRF-WS5',vendorSku:'GRF-WS5-36',category:'Synthetic Paper',productType:'storable',brand:'Graffiti',supplier:'Graffiti Media Inc.',salesPrice:142.00,costPrice:88.00,comparePrice:160.00,taxRate:'7%',uom:'Roll',moq:'1',leadTime:'3-5 days',stockQty:28,reorderPoint:5,width:'36"',length:'150ft',thickness:'5mil',weight:'4.1',weightUnit:'lb',gsm:'90',finish:'Gloss',substrate:'PP Synthetic',printableSides:'Single Side',compatibility:'Inkjet',waterproof:'Yes',tags:['synthetic','gloss','graffiti'],collections:'Synthetic Papers',seoTitle:'',seoDesc:'',description:'',imageUrl:'',odooId:'P-1043',zohoItemId:'ZI-2201',shopifyId:'',syncOdoo:true,syncZoho:true,syncShopify:false,status:'active',completeness:82,missing:['EAN','Images','SEO','Shopify ID']},
-  {id:3,emoji:'🎨',name:'Wide Format Solvent Media Premium',sku:'WFM-SOL-60x165',barcode:'',ean:'',mpn:'',vendorSku:'GMS-SOL-60',category:'Solvent Media',productType:'storable',brand:'4S Graphics',supplier:'Global Media Supply',salesPrice:215.00,costPrice:138.00,comparePrice:240.00,taxRate:'7%',uom:'Roll',moq:'1',leadTime:'5-7 days',stockQty:12,reorderPoint:3,width:'60"',length:'165ft',thickness:'7mil',weight:'8.5',weightUnit:'lb',gsm:'135',finish:'Satin',substrate:'Calendered Vinyl',printableSides:'Single Side',compatibility:'Solvent / Eco-Solvent',waterproof:'Yes',tags:['solvent','wide-format'],collections:'Solvent Media',seoTitle:'',seoDesc:'',description:'',imageUrl:'',odooId:'P-1044',zohoItemId:'',shopifyId:'',syncOdoo:true,syncZoho:false,syncShopify:false,status:'active',completeness:65,missing:['Barcode','EAN','Images','SEO Title','SEO Desc','Zoho ID','Shopify ID']},
-  {id:4,emoji:'🏴',name:'Flex Banner 13oz Blockout',sku:'FLX-13OZ-54x164',barcode:'845123002100',ean:'4000845123002',mpn:'FLX-13OZ',vendorSku:'BSC-FLX13-54',category:'Flex Banner',productType:'storable',brand:'4S Graphics',supplier:'Banner Supply Co.',salesPrice:98.00,costPrice:55.00,comparePrice:115.00,taxRate:'7%',uom:'Roll',moq:'1',leadTime:'2-3 days',stockQty:67,reorderPoint:10,width:'54"',length:'164ft',thickness:'',weight:'7.8',weightUnit:'lb',gsm:'',finish:'Matte',substrate:'PVC Flex',printableSides:'Both',compatibility:'Solvent / UV',waterproof:'Yes',tags:['flex','banner','blockout','outdoor'],collections:'Flex Banners,Best Sellers',seoTitle:'13oz Blockout Flex Banner | 4S Graphics',seoDesc:'Professional flex banner.',description:'<p>13oz PVC blockout flex banner.</p>',imageUrl:'',odooId:'P-1045',zohoItemId:'ZI-2205',shopifyId:'8834115',syncOdoo:true,syncZoho:true,syncShopify:true,status:'active',completeness:100,missing:[]},
-  {id:5,emoji:'🖼️',name:'Dye Sub Transfer Paper 105gsm',sku:'DST-105G-44x328',barcode:'',ean:'',mpn:'',vendorSku:'SPI-DST105-44',category:'Dye Sub',productType:'consumable',brand:'4S Graphics',supplier:'SubPrint International',salesPrice:67.00,costPrice:41.00,comparePrice:80.00,taxRate:'7%',uom:'Roll',moq:'2',leadTime:'7-10 days',stockQty:0,reorderPoint:2,width:'44"',length:'328ft',thickness:'',weight:'3.2',weightUnit:'lb',gsm:'105',finish:'Coated',substrate:'Paper',printableSides:'Single Side',compatibility:'Dye Sub Inkjet',waterproof:'No',tags:['dye-sub','transfer'],collections:'Dye Sub',seoTitle:'',seoDesc:'',description:'',imageUrl:'',odooId:'P-1046',zohoItemId:'',shopifyId:'',syncOdoo:true,syncZoho:false,syncShopify:false,status:'draft',completeness:44,missing:['Barcode','EAN','MPN','Images','SEO','Body HTML','Zoho ID','Shopify ID']},
-  {id:6,emoji:'🏷️',name:'Self Adhesive PP Vinyl Gloss 24"',sku:'SAV-GL-24x150',barcode:'845123003001',ean:'',mpn:'SAV-PPGL',vendorSku:'GMS-PPVG-24',category:'Adhesive Vinyl',productType:'storable',brand:'4S Graphics',supplier:'Global Media Supply',salesPrice:123.00,costPrice:74.00,comparePrice:140.00,taxRate:'7%',uom:'Roll',moq:'1',leadTime:'3-5 days',stockQty:34,reorderPoint:5,width:'24"',length:'150ft',thickness:'3.5mil',weight:'2.9',weightUnit:'lb',gsm:'',finish:'Gloss',substrate:'Cast PP',printableSides:'Single Side',compatibility:'Eco-Solvent / UV',waterproof:'Yes',tags:['vinyl','adhesive','gloss'],collections:'Adhesive Vinyl',seoTitle:'Self Adhesive PP Vinyl | 4S',seoDesc:'3.5mil cast PP gloss.',description:'<p>Self adhesive cast PP gloss vinyl.</p>',imageUrl:'',odooId:'P-1047',zohoItemId:'ZI-2209',shopifyId:'8834118',syncOdoo:true,syncZoho:true,syncShopify:true,status:'active',completeness:91,missing:['EAN']},
-  {id:7,emoji:'✨',name:'Cold Lamination Film Gloss 3mil 54"',sku:'CLF-GL-3MIL-54x150',barcode:'845123004010',ean:'',mpn:'CLF-GL3',vendorSku:'LPS-CGL3-54',category:'Lamination',productType:'storable',brand:'4S Graphics',supplier:'LamPro Supply',salesPrice:145.00,costPrice:89.00,comparePrice:165.00,taxRate:'7%',uom:'Roll',moq:'1',leadTime:'3-5 days',stockQty:19,reorderPoint:4,width:'54"',length:'150ft',thickness:'3mil',weight:'4.8',weightUnit:'lb',gsm:'',finish:'Gloss',substrate:'PET Laminate',printableSides:'N/A',compatibility:'Universal',waterproof:'Yes',tags:['lamination','cold','gloss'],collections:'Lamination',seoTitle:'Cold Gloss Lamination Film | 4S',seoDesc:'3mil cold lamination.',description:'<p>3mil cold lamination film.</p>',imageUrl:'',odooId:'P-1048',zohoItemId:'ZI-2212',shopifyId:'8834120',syncOdoo:true,syncZoho:true,syncShopify:true,status:'active',completeness:88,missing:['EAN']},
-];
+let PRODUCTS = [];
+const NOTION_DEFAULT_DB = '356d3c19d08380daa16ccc615519ee76';
 
 const CHANNELS = [
   {name:'4S Website',icon:'🌐',color:'#2563EB',products:38,complete:89,live:34,on:true},
@@ -1368,8 +1396,9 @@ let logEntries  = [];
 let logFilter   = 'all';
 let connState   = {odoo:'off',zoho:'off',shopify:'off'};
 
-// CSV state
+// CSV / Import state
 let csvHeaders=[], csvRows=[], csvMappings={}, csvPlatform=null, csvFileType='CSV';
+let importMode = 'file'; // 'file' | 'notion'
 const PIM_FIELD_KEYS = SCHEMA.flatMap(g=>g.fields.map(f=>f.pim)).concat(['— Ignore —']);
 
 // ════════════════════════════════════════════════
@@ -1381,7 +1410,7 @@ function goTo(view, navEl) {
   document.getElementById('view-'+view).classList.add('active');
   if(navEl) navEl.classList.add('active');
   currentView = view;
-  const labels = {catalog:'Products',channels:'Channels',schema:'Field Schema',import:'CSV Import',sync:'API Sync',credentials:'Credentials'};
+  const labels = {catalog:'Products',channels:'Channels',schema:'Field Schema',import:'Import',sync:'API Sync',credentials:'Credentials'};
   document.getElementById('breadcrumb-current').textContent = labels[view]||view;
   document.getElementById('filterBar').style.display = view==='catalog' ? 'flex' : 'none';
   if(view==='channels')     renderChannels();
@@ -1413,6 +1442,24 @@ function tagColor(i) {
 
 function renderTable() {
   const rows = getFiltered();
+
+  // Empty state — no products loaded
+  if (PRODUCTS.length === 0) {
+    const hasToken = !!localStorage.getItem('notion_token');
+    document.getElementById('tableWrap').innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:360px;gap:16px;color:var(--txt3)">
+      <div style="font-size:40px">◼</div>
+      <div style="font-size:16px;font-weight:600;color:var(--txt)">${hasToken ? 'Loading from Notion…' : 'No products yet'}</div>
+      <div style="font-size:13px;max-width:360px;text-align:center;line-height:1.6">${hasToken
+        ? 'Fetching your product catalog from Notion. This may take a moment on first load.'
+        : 'Connect your Notion product database to populate the catalog.'}</div>
+      ${!hasToken ? `<button class="btn btn-primary" onclick="goTo('import',document.getElementById('nav-import'));importMode='notion';renderImport()">Connect Notion Database →</button>` : ''}
+      ${hasToken ? `<button class="btn btn-secondary" onclick="autoLoadNotion()">Sync Now</button>` : ''}
+    </div>`;
+    document.getElementById('product-count').textContent = '0';
+    return;
+  }
+
   const html = `
   <table class="att-table">
     <thead><tr>
@@ -1780,8 +1827,59 @@ const SAMPLE = {
 
 function renderImport() {
   const el = document.getElementById('importContent');
+  const tabs = `<div class="import-tabs">
+    <div class="import-tab ${importMode==='file'?'active':''}" onclick="importMode='file';csvHeaders=[];csvRows=[];renderImport()">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h7l3 3v9H3z"/><path d="M10 2v3h3"/></svg>
+      File / CSV
+    </div>
+    <div class="import-tab ${importMode==='notion'?'active':''}" onclick="importMode='notion';csvHeaders=[];csvRows=[];renderImport()">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><rect x="2" y="2" width="12" height="12" rx="2"/></svg>
+      Notion Database
+    </div>
+  </div>`;
+
+  if(importMode === 'notion' && !csvHeaders.length) {
+    const savedToken = localStorage.getItem('notion_token')||'';
+    const savedDb    = localStorage.getItem('notion_db_id') || NOTION_DEFAULT_DB;
+    el.innerHTML = tabs + `
+    <div class="notion-card">
+      <div class="notion-card-title">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="var(--txt)"><rect x="2" y="2" width="12" height="12" rx="2.5"/></svg>
+        Connect Notion Database
+      </div>
+      <div class="notion-card-sub">Pull products directly from any Notion database into your PIM. You'll need an Internal Integration Token and the database ID.</div>
+
+      <div class="notion-steps">
+        <div class="notion-step"><div class="notion-step-num">1</div><div>Go to <strong>notion.so/my-integrations</strong> → New integration → give it a name → copy the <strong>Internal Integration Token</strong></div></div>
+        <div class="notion-step"><div class="notion-step-num">2</div><div>Open your products database in Notion → click <strong>⋯ → Connections → Add connection</strong> → select your integration</div></div>
+        <div class="notion-step"><div class="notion-step-num">3</div><div>Copy the database URL or ID from the browser address bar and paste it below</div></div>
+      </div>
+
+      <div class="notion-warn">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="flex-shrink:0;margin-top:1px"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5M8 11v.5"/></svg>
+        <div>Notion's API doesn't allow direct browser calls, so this uses a CORS proxy (<strong>corsproxy.io</strong>) to relay requests. Your token is never stored server-side — it's only held in your browser's localStorage. For production use, consider a self-hosted backend.</div>
+      </div>
+
+      <div class="notion-field-row">
+        <div class="notion-field-lbl">Integration Token</div>
+        <input class="notion-input" id="notion-token" type="password" placeholder="secret_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" value="${savedToken}">
+        <div class="notion-field-hint">Starts with "secret_" — from notion.so/my-integrations</div>
+      </div>
+      <div class="notion-field-row">
+        <div class="notion-field-lbl">Database ID or URL</div>
+        <input class="notion-input" id="notion-dbid" type="text" placeholder="https://notion.so/… or 32-character ID" value="${savedDb}">
+        <div class="notion-field-hint">The URL of your Notion database page, or just the ID portion</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:4px">
+        <button class="btn btn-primary" id="notion-fetch-btn" onclick="fetchNotionDB()">Fetch Products from Notion</button>
+        <div id="notion-status" style="font-size:12px;color:var(--txt3)"></div>
+      </div>
+    </div>`;
+    return;
+  }
+
   if(!csvHeaders.length) {
-    el.innerHTML = `
+    el.innerHTML = tabs + `
     <div class="drop-zone" id="dropZone" ondragover="ev(event,true)" ondragleave="ev(event,false)" ondrop="drop(event)">
       <input type="file" accept=".csv,.xlsx,.xls" onchange="fileIn(event)">
       <div class="drop-icon">📂</div>
@@ -1806,14 +1904,20 @@ function renderImport() {
     return;
   }
   const pm = csvPlatform;
-  const pmeta = {odoo:{c:'#7C3AED',bg:'#FAF5FF',bd:'#E9D5FF',lbl:'Odoo Inventory'},zoho:{c:'#C2410C',bg:'#FFF7ED',bd:'#FED7AA',lbl:'Zoho Inventory'},shopify:{c:'#15803D',bg:'#F0FDF4',bd:'#BBF7D0',lbl:'Shopify'}};
+  const pmeta = {
+    odoo:{c:'#7C3AED',bg:'#FAF5FF',bd:'#E9D5FF',lbl:'Odoo Inventory'},
+    zoho:{c:'#C2410C',bg:'#FFF7ED',bd:'#FED7AA',lbl:'Zoho Inventory'},
+    shopify:{c:'#15803D',bg:'#F0FDF4',bd:'#BBF7D0',lbl:'Shopify'},
+    notion:{c:'#1A1916',bg:'#F3F2EF',bd:'#D8D5CC',lbl:'Notion Database'},
+  };
   const pmc = pm?pmeta[pm]:null;
   const matched = csvHeaders.filter(h=>csvMappings[h]&&csvMappings[h]!=='— Ignore —').length;
-  el.innerHTML = `
+  const notionBadge = `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;background:#F3F2EF;color:#1A1916;border:1px solid #D8D5CC">Notion</span>`;
+  el.innerHTML = tabs + `
   ${pmc?`<div class="detected-banner" style="background:${pmc.bg};border-color:${pmc.bd};color:${pmc.c}">
-    <span style="font-size:18px">🎯</span>
-    <div style="flex:1"><div style="font-weight:600">${pmc.lbl} detected — all fields auto-mapped</div><div style="font-size:12px;opacity:.8">${csvHeaders.length} columns · ${csvRows.length} rows · ${csvFileType} file</div></div>
-    <span class="tag tag-green">${csvFileType}</span>
+    <span style="font-size:18px">${pm==='notion'?'◼':'🎯'}</span>
+    <div style="flex:1"><div style="font-weight:600">${pmc.lbl} — ${pm==='notion'?csvRows.length+' pages fetched':'all fields auto-mapped'}</div><div style="font-size:12px;opacity:.8">${csvHeaders.length} properties · ${csvRows.length} products</div></div>
+    ${pm==='notion'?notionBadge:`<span class="tag tag-green">${csvFileType}</span>`}
   </div>`:`<div class="detected-banner" style="background:var(--amber-bg);border-color:var(--amber-bd);color:var(--amber)">
     <span style="font-size:16px">⚠</span>
     <div style="flex:1">Unknown format — review the column mapping below. File type: <strong>${csvFileType}</strong></div>
@@ -1852,8 +1956,9 @@ function renderImport() {
 }
 
 function getConf(h) {
-  const pm = csvPlatform?PLAT_MAPS[csvPlatform]:{};
+  const pm = (csvPlatform && PLAT_MAPS[csvPlatform]) || {};
   if(pm[h]) return 98;
+  if(csvPlatform === 'notion' && notionAutoMap(h)) return 88;
   const hl = h.toLowerCase().replace(/[^a-z0-9]/g,'');
   for(const k of PIM_FIELD_KEYS) { if(hl===k.toLowerCase().replace(/[^a-z0-9]/g,'')) return 88; }
   return csvMappings[h]&&csvMappings[h]!=='— Ignore —'?60:0;
@@ -1947,7 +2052,7 @@ function detectPlat() {
   return bestScore>=2?best:null;
 }
 function buildMaps() {
-  const pm=csvPlatform?PLAT_MAPS[csvPlatform]:{};
+  const pm=(csvPlatform && PLAT_MAPS[csvPlatform])||{};
   csvHeaders.forEach(h=>{csvMappings[h]=pm[h]||'— Ignore —';});
 }
 function doImport() {
@@ -1987,6 +2092,304 @@ function doImport() {
   toast(`✓ ${newPs.length} products imported`);
   goTo('catalog',document.getElementById('nav-catalog'));
   renderTable();
+}
+
+// ════════════════════════════════════════════════
+// NOTION IMPORT
+// ════════════════════════════════════════════════
+function extractNotionDbId(raw) {
+  // Accept full URL or bare ID (with or without dashes)
+  const clean = raw.trim();
+  // Extract 32-char hex from URL path
+  const m = clean.match(/([0-9a-f]{32})/i) || clean.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+  if (m) return m[1].replace(/-/g, '');
+  return clean.replace(/-/g, '');
+}
+
+function extractNotionPropVal(prop) {
+  if (!prop) return '';
+  switch (prop.type) {
+    case 'title':        return prop.title.map(t => t.plain_text).join('');
+    case 'rich_text':    return prop.rich_text.map(t => t.plain_text).join('');
+    case 'number':       return prop.number !== null && prop.number !== undefined ? String(prop.number) : '';
+    case 'select':       return prop.select?.name || '';
+    case 'multi_select': return prop.multi_select.map(s => s.name).join(',');
+    case 'status':       return prop.status?.name || '';
+    case 'date':         return prop.date?.start || '';
+    case 'checkbox':     return prop.checkbox ? 'Yes' : 'No';
+    case 'url':          return prop.url || '';
+    case 'email':        return prop.email || '';
+    case 'phone_number': return prop.phone_number || '';
+    case 'files':        return prop.files.map(f => f.external?.url || f.file?.url || '').filter(Boolean).join(',');
+    case 'formula': {
+      const f = prop.formula;
+      if (f.type === 'number') return f.number !== null ? String(f.number) : '';
+      if (f.type === 'string') return f.string || '';
+      if (f.type === 'boolean') return f.boolean ? 'Yes' : 'No';
+      return '';
+    }
+    default: return '';
+  }
+}
+
+function notionAutoMap(h) {
+  const hl = h.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const map = {
+    name:'Product Name', title:'Product Name', productname:'Product Name', item:'Product Name',
+    sku:'SKU', stockkeepingunit:'SKU', itemcode:'SKU', code:'SKU',
+    barcode:'Barcode / UPC', upc:'Barcode / UPC', barcodeupce:'Barcode / UPC',
+    ean:'EAN', ean13:'EAN',
+    mpn:'MPN', manufacturerpartnumber:'MPN',
+    vendorsku:'Vendor SKU', suppliersku:'Vendor SKU',
+    price:'Sales Price', salesprice:'Sales Price', sellingprice:'Sales Price', retailprice:'Sales Price',
+    cost:'Cost Price', costprice:'Cost Price', purchaseprice:'Cost Price', buyprice:'Cost Price',
+    compareprice:'Compare At Price', compareatsalesprice:'Compare At Price',
+    tax:'Tax Rate', taxrate:'Tax Rate', taxpercentage:'Tax Rate',
+    category:'Category', productcategory:'Category', type:'Category',
+    producttype:'Product Type',
+    brand:'Brand', manufacturer:'Brand', make:'Brand',
+    supplier:'Supplier', vendor:'Supplier',
+    tags:'Tags', labels:'Tags', keywords:'Tags',
+    collections:'Collections', collection:'Collections',
+    width:'Width', height:'Length', length:'Length',
+    thickness:'Thickness', gauge:'Thickness',
+    weight:'Weight',
+    gsm:'GSM', grammage:'GSM',
+    finish:'Finish',
+    substrate:'Substrate', material:'Substrate',
+    printablesides:'Printable Sides', sides:'Printable Sides',
+    inkcompatibility:'Ink Compatibility', compatibility:'Ink Compatibility', printmode:'Ink Compatibility',
+    waterproof:'Waterproof',
+    stock:'Stock Quantity', quantity:'Stock Quantity', qty:'Stock Quantity',
+    inventory:'Stock Quantity', stockonhand:'Stock Quantity',
+    reorderpoint:'Reorder Point', reorderlevel:'Reorder Point', reorder:'Reorder Point',
+    moq:'MOQ', minimumorderquantity:'MOQ', minorder:'MOQ',
+    leadtime:'Lead Time', leaddays:'Lead Time',
+    description:'Body HTML', notes:'Body HTML', bodycopy:'Body HTML',
+    seotitle:'SEO Title', metatitle:'SEO Title',
+    seodescription:'SEO Description', metadescription:'SEO Description', seodesc:'SEO Description',
+    imageurl:'Image URL', image:'Image URL', photo:'Image URL', thumbnail:'Image URL', cover:'Image URL',
+    odooid:'Odoo ID', odooproductid:'Odoo ID',
+    zohoitemid:'Zoho Item ID', zohoid:'Zoho Item ID',
+    shopifyid:'Shopify Product ID', shopifyproductid:'Shopify Product ID',
+    itemname:'Product Name', 'item name':'Product Name',
+    salesprice__unit:'Sales Price', 'sales price / unit':'Sales Price', salesprice_unit:'Sales Price',
+    cost__unit:'Cost Price', 'cost / unit':'Cost Price', costunit:'Cost Price',
+    brand_z_:'Brand', brandz:'Brand',
+    manufacturer_z_:'Supplier', manufacturerz:'Supplier',
+    thicknesss:'Thickness', thicknesss_typo_:'Thickness',
+    width_in_:'Width', widthin:'Width',
+    unitname:'UoM', 'unit name':'UoM',
+    producttype_z_:'Product Type', producttypez:'Product Type',
+    inkcompatibility:'Ink Compatibility',
+    sku_zoho_:'Zoho Item ID', skuzoho:'Zoho Item ID',
+    userdefined_id:'— Ignore —', 'userdefined:id':'— Ignore —',
+    size:'— Ignore —',
+  };
+  return map[hl] || null;
+}
+
+async function fetchNotionDB() {
+  const tokenEl = document.getElementById('notion-token');
+  const dbEl    = document.getElementById('notion-dbid');
+  const statusEl = document.getElementById('notion-status');
+  const btn     = document.getElementById('notion-fetch-btn');
+
+  const token = tokenEl?.value.trim();
+  const rawDb = dbEl?.value.trim();
+  if (!token || !rawDb) { toast('⚠ Enter both token and database ID'); return; }
+
+  const dbId = extractNotionDbId(rawDb);
+  if (dbId.length < 32) { toast('⚠ Invalid database ID'); return; }
+
+  localStorage.setItem('notion_token', token);
+  localStorage.setItem('notion_db_id', rawDb);
+
+  btn.disabled = true;
+  btn.textContent = 'Connecting…';
+  if (statusEl) statusEl.textContent = '';
+
+  try {
+    const allResults = [];
+    let cursor = null;
+    let page = 0;
+    do {
+      page++;
+      if (btn) btn.textContent = `Fetching page ${page}…`;
+      const body = cursor ? JSON.stringify({ start_cursor: cursor }) : '{}';
+      const url = `https://corsproxy.io/?url=${encodeURIComponent('https://api.notion.com/v1/databases/' + dbId + '/query')}`;
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json',
+        },
+        body,
+      });
+      if (!resp.ok) {
+        let msg = `HTTP ${resp.status}`;
+        try { const e = await resp.json(); msg = e.message || msg; } catch(_) {}
+        throw new Error(msg);
+      }
+      const data = await resp.json();
+      allResults.push(...(data.results || []));
+      cursor = data.has_more ? data.next_cursor : null;
+    } while (cursor);
+
+    if (!allResults.length) {
+      toast('⚠ No pages found in that database — make sure the integration is connected to it');
+      btn.disabled = false; btn.textContent = 'Fetch Products from Notion';
+      return;
+    }
+
+    // Build headers from the first page's property names
+    const propNames = Object.keys(allResults[0].properties);
+    csvHeaders  = propNames;
+    csvFileType = 'Notion';
+    csvPlatform = 'notion';
+    csvRows     = allResults.map(page =>
+      propNames.map(key => extractNotionPropVal(page.properties[key]))
+    );
+
+    // Auto-map using Notion-aware field names
+    csvHeaders.forEach(h => { csvMappings[h] = notionAutoMap(h) || '— Ignore —'; });
+
+    toast(`✓ Fetched ${allResults.length} products from Notion`);
+    renderImport();
+  } catch (e) {
+    toast('⚠ Notion fetch failed: ' + e.message);
+    if (statusEl) statusEl.textContent = '⚠ ' + e.message;
+    btn.disabled = false;
+    btn.textContent = 'Fetch Products from Notion';
+  }
+}
+
+// ── Map a raw Notion API page to a PIM product ────────────────
+function mapNotionPageToProduct(page, index) {
+  const props = page.properties || {};
+  const get = key => extractNotionPropVal(props[key]) || '';
+
+  const name  = get('Item Name') || get('SKU') || '(unnamed)';
+  const sku   = get('SKU');
+  const brand = get('Brand (Z)');
+  const salesPrice = parseFloat(get('Sales Price / Unit')) || 0;
+  const costPrice  = parseFloat(get('Cost / Unit'))  || 0;
+
+  // Parse "36\" x 60ft" into width + length
+  const sizeStr = get('Size');
+  const sm = sizeStr.match(/(\d+(?:\.\d+)?)\s*[""]\s*x\s*(\d+(?:\.\d+)?)\s*(ft|in|m)?/i);
+  const widthVal  = sm ? sm[1] + '"' : (get('Width (in)') ? get('Width (in)') + '"' : '');
+  const lengthVal = sm ? sm[2] + (sm[3] || 'ft') : '';
+
+  const inkRaw = get('Ink Compatibility').replace(/^\["|"\]$/g,'').replace(/",\s*"/g,', ');
+
+  const missing = [];
+  if (!name || name === '(unnamed)') missing.push('Product Name');
+  if (!sku) missing.push('SKU');
+  if (!salesPrice) missing.push('Sales Price');
+  const completeness = Math.round(100 * (4 - missing.length) / 4);
+
+  return {
+    id: Date.now() + index,
+    emoji: '📦',
+    name, sku,
+    barcode:       get('Barcode'),
+    ean: '', mpn: '', vendorSku: '',
+    category:      get('Item Type') || 'Inventory',
+    productType:   (get('Product Type (Z)')||'Goods').toLowerCase()==='goods' ? 'storable' : 'consumable',
+    brand,
+    supplier:      '',
+    salesPrice,  costPrice,
+    comparePrice:  0,
+    taxRate:       '',
+    uom:           get('Unit Name'),
+    moq:           '1',
+    leadTime:      '',
+    stockQty:      0,
+    reorderPoint:  0,
+    width:         widthVal,
+    length:        lengthVal,
+    thickness:     get('Thicknesss'),
+    weight:        '',
+    weightUnit:    'lb',
+    gsm:           '',
+    finish:        get('Finish'),
+    substrate:     '',
+    printableSides:'',
+    compatibility: inkRaw,
+    waterproof:    '',
+    tags:          [],
+    collections:   '',
+    seoTitle:      '',
+    seoDesc:       '',
+    description:   get('Sales Description'),
+    imageUrl:      '',
+    odooId:        '',
+    zohoItemId:    get('SKU (Zoho)'),
+    shopifyId:     '',
+    syncOdoo: false, syncZoho: false, syncShopify: false,
+    status:        'active',
+    completeness,
+    missing,
+  };
+}
+
+async function autoLoadNotion(silent = false) {
+  const token = localStorage.getItem('notion_token');
+  const dbId  = localStorage.getItem('notion_db_id') || NOTION_DEFAULT_DB;
+  if (!token) return false;
+  if (!localStorage.getItem('notion_db_id')) localStorage.setItem('notion_db_id', NOTION_DEFAULT_DB);
+
+  const countEl = document.getElementById('product-count');
+  if (countEl) countEl.textContent = '…';
+
+  try {
+    const allPages = [];
+    let cursor = null;
+    do {
+      const body = cursor ? JSON.stringify({ start_cursor: cursor }) : '{}';
+      const url = `https://corsproxy.io/?url=${encodeURIComponent('https://api.notion.com/v1/databases/' + dbId + '/query')}`;
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json',
+        },
+        body,
+      });
+      if (!resp.ok) {
+        let msg = `HTTP ${resp.status}`;
+        try { const e = await resp.json(); msg = e.message || msg; } catch(_) {}
+        throw new Error(msg);
+      }
+      const data = await resp.json();
+      allPages.push(...(data.results || []));
+      cursor = data.has_more ? data.next_cursor : null;
+    } while (cursor);
+
+    if (!allPages.length) return false;
+
+    PRODUCTS = allPages.map((page, i) => mapNotionPageToProduct(page, i));
+    if (countEl) countEl.textContent = PRODUCTS.length;
+    schedulePersist();
+    if (currentView === 'catalog') renderTable();
+    if (!silent) toast(`✓ ${PRODUCTS.length} products loaded from Notion`);
+    return true;
+  } catch(e) {
+    console.error('Notion auto-load failed:', e);
+    if (!silent) toast('⚠ Notion sync failed: ' + e.message);
+    if (countEl) countEl.textContent = PRODUCTS.length;
+    return false;
+  }
+}
+
+async function syncFromNotion() {
+  const btn = document.getElementById('notion-sync-btn');
+  if (btn) { btn.innerHTML = '<span class="spin">⟳</span> Syncing…'; btn.disabled = true; }
+  await autoLoadNotion(false);
+  if (btn) { btn.innerHTML = '⟳ Sync Notion'; btn.disabled = false; }
 }
 
 // ════════════════════════════════════════════════
@@ -2487,8 +2890,11 @@ function schedulePersist() {
     await openDB();
     const hadData = await loadFromDB();
     if (!hadData) {
-      // First launch — seed the DB with sample products
       setStorageStatus('fresh');
+      const notionToken = localStorage.getItem('notion_token');
+      if (notionToken) {
+        await autoLoadNotion(true);
+      }
       await persist();
     }
   } catch(e) {
@@ -2510,6 +2916,12 @@ function schedulePersist() {
 
   renderTable();
   document.getElementById('filterBar').style.display = 'flex';
+
+  // Show Notion sync button if token is configured
+  if (localStorage.getItem('notion_token')) {
+    const nb = document.getElementById('notion-sync-btn');
+    if (nb) nb.style.display = '';
+  }
 })();
 
 // ════════════════════════════════════════════════════════════════
